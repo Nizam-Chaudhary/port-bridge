@@ -1,0 +1,26 @@
+{
+    "typescript.tsdk": "./node_modules/typescript/lib",
+    "typescript.enablePromptUseWorkspaceTsdk": true,
+    "editor.tabSize": 4,
+    "oxc.fmt.configPath": ".oxfmtrc.json",
+    "editor.defaultFormatter": "oxc.oxc-vscode",
+    "editor.formatOnSave": true,
+    "oxc.typeAware": true,
+    "editor.codeActionsOnSave": {
+        "source.fixAll.oxc": "always"
+    },
+    "[xml]": {
+        "editor.defaultFormatter": "redhat.vscode-xml"
+    },
+    "files.readonlyInclude": {
+        "**/routeTree.gen.ts": true
+    },
+    "files.watcherExclude": {
+        "**/routeTree.gen.ts": true
+    },
+    "search.exclude": {
+        "**/routeTree.gen.ts": true
+    },
+    "cSpell.words": ["oxfmt", "oxlint", "tsgo", "tsgolint"],
+    "oxc.enable": true
+}
