@@ -1,21 +1,21 @@
 {
     "$schema": "./node_modules/oxfmt/configuration_schema.json",
-    "ignorePatterns": [],
+    "ignorePatterns": ["./src/routeTree.gen.ts"],
     "singleQuote": true,
     "bracketSameLine": true,
     "jsxSingleQuote": true,
-    "experimentalSortImports": {
+    "sortImports": {
         "groups": [
-            ["side-effect"],
-            ["builtin"],
-            ["external", "type-external"],
-            ["internal", "type-internal"],
-            ["parent", "type-parent"],
-            ["sibling", "type-sibling"],
-            ["index", "type-index"]
+            "type-import",
+            ["value-builtin", "value-external"],
+            "type-internal",
+            "value-internal",
+            ["type-parent", "type-sibling", "type-index"],
+            ["value-parent", "value-sibling", "value-index"],
+            "unknown"
         ]
     },
-    "experimentalTailwindcss": {
+    "sortTailwindcss": {
         "stylesheet": "./src/index.css",
         "attributes": ["class", "className"],
         "functions": ["clsx", "cn", "cva"],
