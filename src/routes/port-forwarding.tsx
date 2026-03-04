@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
     MoreHorizontalIcon,
     PauseIcon,
@@ -14,7 +14,6 @@ import { toast } from 'sonner';
 import type { PortForward } from '@/lib/types';
 
 import { ConfirmDialog } from '@/components/confirm-dialog';
-import { ForwardDialog } from '@/components/forward-dialog';
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
 import { Badge } from '@/components/ui/badge';
@@ -50,9 +49,8 @@ export const Route = createFileRoute('/port-forwarding')({
 
 function PortForwardingPage() {
     const { hosts, forwards, deleteForward, toggleForward } = useAppStore();
+    const navigate = useNavigate();
     const [hostFilter, setHostFilter] = useState('all');
-    const [dialogOpen, setDialogOpen] = useState(false);
-    const [editingForward, setEditingForward] = useState<PortForward | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<PortForward | null>(null);
 
     const filteredForwards = useMemo(() => {
@@ -74,13 +72,11 @@ function PortForwardingPage() {
     };
 
     const handleEdit = (forward: PortForward) => {
-        setEditingForward(forward);
-        setDialogOpen(true);
+        void navigate({ to: '/forwards/edit/$forwardId', params: { forwardId: forward.id } });
     };
 
     const handleAdd = () => {
-        setEditingForward(null);
-        setDialogOpen(true);
+        void navigate({ to: '/forwards/new' });
     };
 
     return (
@@ -241,15 +237,6 @@ function PortForwardingPage() {
                     </Table>
                 </div>
             </div>
-
-            <ForwardDialog
-                open={dialogOpen}
-                onOpenChange={(open) => {
-                    setDialogOpen(open);
-                    if (!open) setEditingForward(null);
-                }}
-                forward={editingForward}
-            />
 
             <ConfirmDialog
                 open={!!deleteTarget}

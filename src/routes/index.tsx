@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
     CopyIcon,
     DownloadIcon,
@@ -15,7 +15,6 @@ import { toast } from 'sonner';
 import type { Host } from '@/lib/types';
 
 import { ConfirmDialog } from '@/components/confirm-dialog';
-import { HostDialog } from '@/components/host-dialog';
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
 import { Badge } from '@/components/ui/badge';
@@ -44,9 +43,8 @@ export const Route = createFileRoute('/')({
 
 function HostsPage() {
     const { hosts, forwards, deleteHost, duplicateHost } = useAppStore();
+    const navigate = useNavigate();
     const [search, setSearch] = useState('');
-    const [dialogOpen, setDialogOpen] = useState(false);
-    const [editingHost, setEditingHost] = useState<Host | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Host | null>(null);
 
     const filteredHosts = useMemo(() => {
@@ -63,13 +61,11 @@ function HostsPage() {
     const getForwardCount = (hostId: string) => forwards.filter((f) => f.hostId === hostId).length;
 
     const handleEdit = (host: Host) => {
-        setEditingHost(host);
-        setDialogOpen(true);
+        void navigate({ to: '/hosts/edit/$hostId', params: { hostId: host.id } });
     };
 
     const handleAdd = () => {
-        setEditingHost(null);
-        setDialogOpen(true);
+        void navigate({ to: '/hosts/new' });
     };
 
     const handleConnect = (host: Host) => {
@@ -202,15 +198,6 @@ function HostsPage() {
                     </Table>
                 </div>
             </div>
-
-            <HostDialog
-                open={dialogOpen}
-                onOpenChange={(open) => {
-                    setDialogOpen(open);
-                    if (!open) setEditingHost(null);
-                }}
-                host={editingHost}
-            />
 
             <ConfirmDialog
                 open={!!deleteTarget}

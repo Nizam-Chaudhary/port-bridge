@@ -12,6 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PortForwardingRouteImport } from './routes/port-forwarding'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as HostsNewRouteImport } from './routes/hosts.new'
+import { Route as ForwardsNewRouteImport } from './routes/forwards.new'
+import { Route as HostsEditHostIdRouteImport } from './routes/hosts.edit.$hostId'
+import { Route as ForwardsEditForwardIdRouteImport } from './routes/forwards.edit.$forwardId'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -28,35 +32,93 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HostsNewRoute = HostsNewRouteImport.update({
+  id: '/hosts/new',
+  path: '/hosts/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForwardsNewRoute = ForwardsNewRouteImport.update({
+  id: '/forwards/new',
+  path: '/forwards/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HostsEditHostIdRoute = HostsEditHostIdRouteImport.update({
+  id: '/hosts/edit/$hostId',
+  path: '/hosts/edit/$hostId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForwardsEditForwardIdRoute = ForwardsEditForwardIdRouteImport.update({
+  id: '/forwards/edit/$forwardId',
+  path: '/forwards/edit/$forwardId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/port-forwarding': typeof PortForwardingRoute
   '/settings': typeof SettingsRoute
+  '/forwards/new': typeof ForwardsNewRoute
+  '/hosts/new': typeof HostsNewRoute
+  '/forwards/edit/$forwardId': typeof ForwardsEditForwardIdRoute
+  '/hosts/edit/$hostId': typeof HostsEditHostIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/port-forwarding': typeof PortForwardingRoute
   '/settings': typeof SettingsRoute
+  '/forwards/new': typeof ForwardsNewRoute
+  '/hosts/new': typeof HostsNewRoute
+  '/forwards/edit/$forwardId': typeof ForwardsEditForwardIdRoute
+  '/hosts/edit/$hostId': typeof HostsEditHostIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/port-forwarding': typeof PortForwardingRoute
   '/settings': typeof SettingsRoute
+  '/forwards/new': typeof ForwardsNewRoute
+  '/hosts/new': typeof HostsNewRoute
+  '/forwards/edit/$forwardId': typeof ForwardsEditForwardIdRoute
+  '/hosts/edit/$hostId': typeof HostsEditHostIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/port-forwarding' | '/settings'
+  fullPaths:
+    | '/'
+    | '/port-forwarding'
+    | '/settings'
+    | '/forwards/new'
+    | '/hosts/new'
+    | '/forwards/edit/$forwardId'
+    | '/hosts/edit/$hostId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/port-forwarding' | '/settings'
-  id: '__root__' | '/' | '/port-forwarding' | '/settings'
+  to:
+    | '/'
+    | '/port-forwarding'
+    | '/settings'
+    | '/forwards/new'
+    | '/hosts/new'
+    | '/forwards/edit/$forwardId'
+    | '/hosts/edit/$hostId'
+  id:
+    | '__root__'
+    | '/'
+    | '/port-forwarding'
+    | '/settings'
+    | '/forwards/new'
+    | '/hosts/new'
+    | '/forwards/edit/$forwardId'
+    | '/hosts/edit/$hostId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   PortForwardingRoute: typeof PortForwardingRoute
   SettingsRoute: typeof SettingsRoute
+  ForwardsNewRoute: typeof ForwardsNewRoute
+  HostsNewRoute: typeof HostsNewRoute
+  ForwardsEditForwardIdRoute: typeof ForwardsEditForwardIdRoute
+  HostsEditHostIdRoute: typeof HostsEditHostIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +144,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/hosts/new': {
+      id: '/hosts/new'
+      path: '/hosts/new'
+      fullPath: '/hosts/new'
+      preLoaderRoute: typeof HostsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forwards/new': {
+      id: '/forwards/new'
+      path: '/forwards/new'
+      fullPath: '/forwards/new'
+      preLoaderRoute: typeof ForwardsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hosts/edit/$hostId': {
+      id: '/hosts/edit/$hostId'
+      path: '/hosts/edit/$hostId'
+      fullPath: '/hosts/edit/$hostId'
+      preLoaderRoute: typeof HostsEditHostIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forwards/edit/$forwardId': {
+      id: '/forwards/edit/$forwardId'
+      path: '/forwards/edit/$forwardId'
+      fullPath: '/forwards/edit/$forwardId'
+      preLoaderRoute: typeof ForwardsEditForwardIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +179,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PortForwardingRoute: PortForwardingRoute,
   SettingsRoute: SettingsRoute,
+  ForwardsNewRoute: ForwardsNewRoute,
+  HostsNewRoute: HostsNewRoute,
+  ForwardsEditForwardIdRoute: ForwardsEditForwardIdRoute,
+  HostsEditHostIdRoute: HostsEditHostIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
