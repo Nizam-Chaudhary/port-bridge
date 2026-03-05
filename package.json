@@ -1,5 +1,5 @@
 {
-    "name": "port-bridge",
+    "name": "ssh-manager",
     "version": "1.0.0",
     "private": true,
     "description": "SSH and Port GUI manager",

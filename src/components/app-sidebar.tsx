@@ -37,7 +37,6 @@ export function AppSidebar() {
                             </div>
                             <div className='flex flex-col gap-0.5 leading-none'>
                                 <span className='font-semibold'>SSH Manager</span>
-                                <span className='text-xs text-muted-foreground'>Port Bridge</span>
                             </div>
                         </SidebarMenuButton>
                     </SidebarMenuItem>

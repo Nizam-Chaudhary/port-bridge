@@ -1,8 +1,7 @@
 import type { AppSettings, ForwardPreset } from './types';
 
 export const initialSettings: AppSettings = {
-    sshBinaryPath: '/usr/bin/ssh',
-    configStoragePath: '~/.config/port-bridge',
+    configStoragePath: '~/.config/ssh-manager',
     autoStartTunnels: false,
     restartOnDisconnect: true,
 };

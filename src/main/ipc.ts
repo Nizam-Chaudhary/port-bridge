@@ -224,18 +224,15 @@ export function setupIpcHandlers() {
     });
 
     // 6. Start a tunnel
-    ipcMain.handle(
-        'ssh:startTunnel',
-        async (_, forwardConfig: any, hostConfig: any, sshBinary: string) => {
-            try {
-                const result = tunnelManager.start(forwardConfig, hostConfig, sshBinary);
-                return { success: true, pid: result.pid };
-            } catch (error) {
-                console.error('Error starting tunnel:', error);
-                throw error;
-            }
-        },
-    );
+    ipcMain.handle('ssh:startTunnel', async (_, forwardConfig: any, hostConfig: any) => {
+        try {
+            const result = tunnelManager.start(forwardConfig, hostConfig, 'ssh');
+            return { success: true, pid: result.pid };
+        } catch (error) {
+            console.error('Error starting tunnel:', error);
+            throw error;
+        }
+    });
 
     // 7. Stop a tunnel
     ipcMain.handle('ssh:stopTunnel', async (_, forwardId: string) => {
@@ -259,17 +256,14 @@ export function setupIpcHandlers() {
     });
 
     // 9. Generate SSH command string (for preview)
-    ipcMain.handle(
-        'ssh:generateCommand',
-        async (_, forwardConfig: any, hostConfig: any, sshBinary: string) => {
-            try {
-                return tunnelManager.generateSshCommand(forwardConfig, hostConfig, sshBinary);
-            } catch (error) {
-                console.error('Error generating command:', error);
-                throw error;
-            }
-        },
-    );
+    ipcMain.handle('ssh:generateCommand', async (_, forwardConfig: any, hostConfig: any) => {
+        try {
+            return tunnelManager.generateSshCommand(forwardConfig, hostConfig, 'ssh');
+        } catch (error) {
+            console.error('Error generating command:', error);
+            throw error;
+        }
+    });
 }
 
 // Cleanup all tunnels on app quit

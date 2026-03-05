@@ -155,7 +155,7 @@ export const useAppStore = create<AppStore>()(
                                 username: host.username,
                                 identityFile: host.identityFile,
                             },
-                            state.settings.sshBinaryPath,
+                            'ssh',
                         );
 
                         set((state) => {

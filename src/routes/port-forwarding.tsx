@@ -52,7 +52,7 @@ export const Route = createFileRoute('/port-forwarding')({
 });
 
 function PortForwardingPage() {
-    const { hosts, forwards, deleteForward, startForward, stopForward, settings } = useAppStore();
+    const { hosts, forwards, deleteForward, startForward, stopForward } = useAppStore();
     const navigate = useNavigate();
     const [hostFilter, setHostFilter] = useState('all');
     const [deleteTarget, setDeleteTarget] = useState<PortForward | null>(null);
@@ -91,7 +91,7 @@ function PortForwardingPage() {
     const generateSshCommand = (forward: PortForward) => {
         const host = hosts.find((h) => h.id === forward.hostId);
         const hostName = host?.name ?? '<host>';
-        const sshBin = settings.sshBinaryPath || 'ssh';
+        const sshBin = 'ssh';
         const bindAddr = forward.bindAddress || '';
 
         if (forward.type === 'local') {

@@ -26,7 +26,6 @@ function SettingsPage() {
 
     const form = useForm({
         defaultValues: {
-            sshBinaryPath: settings.sshBinaryPath,
             configStoragePath: settings.configStoragePath,
             autoStartTunnels: settings.autoStartTunnels,
             restartOnDisconnect: settings.restartOnDisconnect,
@@ -41,7 +40,7 @@ function SettingsPage() {
         <>
             <PageHeader title='Settings' />
 
-            <div className='flex max-w-2xl flex-1 flex-col gap-6 p-4'>
+            <div className='mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-4'>
                 <form
                     id='settings-form'
                     onSubmit={(e) => {
@@ -58,27 +57,6 @@ function SettingsPage() {
                         <CardContent>
                             <FieldGroup>
                                 <form.Field
-                                    name='sshBinaryPath'
-                                    children={(field) => (
-                                        <Field>
-                                            <FieldLabel htmlFor={field.name}>
-                                                SSH Binary Path
-                                            </FieldLabel>
-                                            <Input
-                                                id={field.name}
-                                                name={field.name}
-                                                value={field.state.value}
-                                                onBlur={field.handleBlur}
-                                                onChange={(e) => field.handleChange(e.target.value)}
-                                                placeholder='/usr/bin/ssh'
-                                            />
-                                            <FieldDescription>
-                                                Path to the SSH binary on your system.
-                                            </FieldDescription>
-                                        </Field>
-                                    )}
-                                />
-                                <form.Field
                                     name='configStoragePath'
                                     children={(field) => (
                                         <Field>
@@ -91,10 +69,10 @@ function SettingsPage() {
                                                 value={field.state.value}
                                                 onBlur={field.handleBlur}
                                                 onChange={(e) => field.handleChange(e.target.value)}
-                                                placeholder='~/.config/port-bridge'
+                                                placeholder='~/.config/ssh-manager'
                                             />
                                             <FieldDescription>
-                                                Where Port Bridge stores its configuration files.
+                                                Where SSH Manager stores its configuration files.
                                             </FieldDescription>
                                         </Field>
                                     )}

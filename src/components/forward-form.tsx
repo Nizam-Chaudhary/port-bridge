@@ -55,7 +55,7 @@ interface ForwardFormProps {
 }
 
 export function ForwardForm({ forward }: ForwardFormProps) {
-    const { hosts, addForward, updateForward, checkPortAvailability, settings } = useAppStore();
+    const { hosts, addForward, updateForward, checkPortAvailability } = useAppStore();
     const navigate = useNavigate();
     const isEditing = !!forward;
     const [presetOpen, setPresetOpen] = useState(false);
@@ -118,7 +118,7 @@ export function ForwardForm({ forward }: ForwardFormProps) {
         const values = form.state.values;
         const host = hosts.find((h) => h.id === values.hostId);
         const hostName = host?.name ?? '<host>';
-        const sshBin = settings.sshBinaryPath || 'ssh';
+        const sshBin = 'ssh';
         const bindAddr = values.bindAddress || '';
 
         if (values.type === 'local') {
@@ -135,7 +135,7 @@ export function ForwardForm({ forward }: ForwardFormProps) {
             return `${sshBin} -D ${dynamicBind} ${hostName}`;
         }
         return '';
-    }, [form.state.values, hosts, settings.sshBinaryPath]);
+    }, [form.state.values, hosts]);
 
     const handleCheckPort = async () => {
         const port = form.state.values.localPort;

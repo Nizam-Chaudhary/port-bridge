@@ -66,7 +66,6 @@ export const HostSchema = z.object({
 
 // Settings
 export const AppSettingsSchema = z.object({
-    sshBinaryPath: z.string().default('ssh'),
     configStoragePath: z.string().default('~/.config/ssh-manager/config.json'),
     autoStartTunnels: z.boolean().default(false),
     restartOnDisconnect: z.boolean().default(true),
@@ -76,7 +75,6 @@ export const AppSettingsSchema = z.object({
 export const AppConfigSchema = z.object({
     hosts: z.array(HostSchema).default([]),
     settings: AppSettingsSchema.default({
-        sshBinaryPath: 'ssh',
         configStoragePath: '~/.config/ssh-manager/config.json',
         autoStartTunnels: false,
         restartOnDisconnect: true,
