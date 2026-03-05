@@ -23,6 +23,11 @@ export const PortForwardSchema = z.object({
     remotePort: z.number().int().positive().optional(),
     localHost: z.string().optional(),
     status: ForwardStatusSchema.default('stopped'),
+    // Advanced options
+    bindAddress: z.string().optional(),
+    autoStart: z.boolean().default(false),
+    restartOnDisconnect: z.boolean().default(false),
+    gatewayPorts: z.boolean().default(false),
 });
 
 // Host

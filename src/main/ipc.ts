@@ -2,8 +2,20 @@ import { ipcMain } from 'electron';
 import SSHConfig from 'ssh-config';
 
 import { safelyReadFile, safelyWriteFile } from './fs-utils';
+import { TunnelManager, checkPortAvailability } from './tunnel-manager';
+
+const tunnelManager = new TunnelManager();
 
 export function setupIpcHandlers() {
+    // Set up tunnel status change callback
+    tunnelManager.onStatusChange((forwardId, status, error) => {
+        // Broadcast to all renderer windows
+        const { BrowserWindow } = require('electron');
+        for (const win of BrowserWindow.getAllWindows()) {
+            win.webContents.send('tunnel:statusChange', { forwardId, status, error });
+        }
+    });
+
     // 1. Load config from JSON
     ipcMain.handle('ssh:loadConfig', async (_, configPath: string) => {
         try {
@@ -37,13 +49,10 @@ export function setupIpcHandlers() {
             const config = SSHConfig.parse(content);
             const importedHosts: any[] = [];
 
-            // Quick and dirty conversion for now, we'll map fields
             for (const section of config) {
                 if (section.type === 1 && section.param === 'Host') {
-                    // 1 is SSHConfig.DIRECTIVE
-                    // Found a Host block
                     const secValue = section.value as unknown as string;
-                    if (secValue === '*' || secValue.includes('?')) continue; // Skip wildcards
+                    if (secValue === '*' || secValue.includes('?')) continue;
 
                     const host: any = {
                         id: crypto.randomUUID(),
@@ -100,7 +109,22 @@ export function setupIpcHandlers() {
                             case 'requesttty':
                                 host.requestTTY = val.toLowerCase() === 'yes';
                                 break;
-                            // Add LocalForward handling here later
+                            case 'localforward': {
+                                // Parse "port host:port" or "bind:port host:port"
+                                const forward = parseLocalForward(val, host.id);
+                                if (forward) host.forwards.push(forward);
+                                break;
+                            }
+                            case 'remoteforward': {
+                                const forward = parseRemoteForward(val, host.id);
+                                if (forward) host.forwards.push(forward);
+                                break;
+                            }
+                            case 'dynamicforward': {
+                                const forward = parseDynamicForward(val, host.id);
+                                if (forward) host.forwards.push(forward);
+                                break;
+                            }
                             default:
                                 host.customOptions.push({ key: line.param, value: val });
                                 break;
@@ -108,7 +132,6 @@ export function setupIpcHandlers() {
                     }
 
                     if (host.hostname) {
-                        // Default auth to key if identity file exists, else password unless we know better
                         host.authType = host.identityFile ? 'key' : 'password';
                         if (!host.port) host.port = 22;
                         importedHosts.push(host);
@@ -158,15 +181,21 @@ export function setupIpcHandlers() {
 
                 for (const forward of host.forwards) {
                     if (forward.type === 'local') {
+                        const bindPart = forward.bindAddress
+                            ? `${forward.bindAddress}:${forward.localPort}`
+                            : `${forward.localPort}`;
                         block.append({
-                            LocalForward: `${forward.localPort} ${forward.remoteHost || 'localhost'}:${forward.remotePort}`,
+                            LocalForward: `${bindPart} ${forward.remoteHost || 'localhost'}:${forward.remotePort}`,
                         });
                     } else if (forward.type === 'remote') {
                         block.append({
                             RemoteForward: `${forward.remotePort} ${forward.localHost || 'localhost'}:${forward.localPort}`,
                         });
                     } else if (forward.type === 'dynamic') {
-                        block.append({ DynamicForward: forward.localPort.toString() });
+                        const bindPart = forward.bindAddress
+                            ? `${forward.bindAddress}:${forward.localPort}`
+                            : forward.localPort.toString();
+                        block.append({ DynamicForward: bindPart });
                     }
                 }
 
@@ -183,4 +212,157 @@ export function setupIpcHandlers() {
             throw error;
         }
     });
+
+    // 5. Check port availability
+    ipcMain.handle('ssh:checkPort', async (_, port: number) => {
+        try {
+            return await checkPortAvailability(port);
+        } catch (error) {
+            console.error('Error checking port:', error);
+            throw error;
+        }
+    });
+
+    // 6. Start a tunnel
+    ipcMain.handle(
+        'ssh:startTunnel',
+        async (_, forwardConfig: any, hostConfig: any, sshBinary: string) => {
+            try {
+                const result = tunnelManager.start(forwardConfig, hostConfig, sshBinary);
+                return { success: true, pid: result.pid };
+            } catch (error) {
+                console.error('Error starting tunnel:', error);
+                throw error;
+            }
+        },
+    );
+
+    // 7. Stop a tunnel
+    ipcMain.handle('ssh:stopTunnel', async (_, forwardId: string) => {
+        try {
+            const stopped = tunnelManager.stop(forwardId);
+            return { success: stopped };
+        } catch (error) {
+            console.error('Error stopping tunnel:', error);
+            throw error;
+        }
+    });
+
+    // 8. Get tunnel status
+    ipcMain.handle('ssh:getTunnelStatus', async (_, forwardId: string) => {
+        try {
+            return tunnelManager.status(forwardId);
+        } catch (error) {
+            console.error('Error getting tunnel status:', error);
+            throw error;
+        }
+    });
+
+    // 9. Generate SSH command string (for preview)
+    ipcMain.handle(
+        'ssh:generateCommand',
+        async (_, forwardConfig: any, hostConfig: any, sshBinary: string) => {
+            try {
+                return tunnelManager.generateSshCommand(forwardConfig, hostConfig, sshBinary);
+            } catch (error) {
+                console.error('Error generating command:', error);
+                throw error;
+            }
+        },
+    );
+}
+
+// Cleanup all tunnels on app quit
+export function cleanupTunnels() {
+    tunnelManager.stopAll();
+}
+
+// --- Forward parsing helpers ---
+
+function parseLocalForward(value: string, hostId: string) {
+    // Formats: "port host:port" or "bind:port host:port"
+    const parts = value.trim().split(/\s+/);
+    if (parts.length !== 2) return null;
+
+    const [source, dest] = parts;
+    const destParts = dest.split(':');
+    if (destParts.length !== 2) return null;
+
+    let localPort: number;
+    let bindAddress: string | undefined;
+
+    if (source.includes(':')) {
+        const srcParts = source.split(':');
+        bindAddress = srcParts[0];
+        localPort = parseInt(srcParts[1], 10);
+    } else {
+        localPort = parseInt(source, 10);
+    }
+
+    return {
+        id: crypto.randomUUID(),
+        name: `local-${localPort}`,
+        hostId,
+        type: 'local',
+        localPort,
+        remoteHost: destParts[0],
+        remotePort: parseInt(destParts[1], 10),
+        bindAddress,
+        status: 'stopped',
+        autoStart: false,
+        restartOnDisconnect: false,
+        gatewayPorts: false,
+    };
+}
+
+function parseRemoteForward(value: string, hostId: string) {
+    const parts = value.trim().split(/\s+/);
+    if (parts.length !== 2) return null;
+
+    const [source, dest] = parts;
+    const destParts = dest.split(':');
+    if (destParts.length !== 2) return null;
+
+    const remotePort = parseInt(source, 10);
+
+    return {
+        id: crypto.randomUUID(),
+        name: `remote-${remotePort}`,
+        hostId,
+        type: 'remote',
+        remotePort,
+        localHost: destParts[0],
+        localPort: parseInt(destParts[1], 10),
+        status: 'stopped',
+        autoStart: false,
+        restartOnDisconnect: false,
+        gatewayPorts: false,
+    };
+}
+
+function parseDynamicForward(value: string, hostId: string) {
+    const trimmed = value.trim();
+    let localPort: number;
+    let bindAddress: string | undefined;
+
+    if (trimmed.includes(':')) {
+        const parts = trimmed.split(':');
+        bindAddress = parts[0];
+        localPort = parseInt(parts[1], 10);
+    } else {
+        localPort = parseInt(trimmed, 10);
+    }
+
+    return {
+        id: crypto.randomUUID(),
+        name: `socks-${localPort}`,
+        hostId,
+        type: 'dynamic',
+        localPort,
+        bindAddress,
+        status: 'stopped',
+        autoStart: false,
+        restartOnDisconnect: false,
+        gatewayPorts: false,
+    };
 }

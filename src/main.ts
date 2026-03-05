@@ -58,6 +58,11 @@ app.on('activate', () => {
     }
 });
 
+// Cleanup tunnels before app quits
+app.on('before-quit', () => {
+    cleanupTunnels();
+});
+
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
-import { setupIpcHandlers } from './main/ipc';
+import { setupIpcHandlers, cleanupTunnels } from './main/ipc';

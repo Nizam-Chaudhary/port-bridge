@@ -16,6 +16,11 @@ interface AppStore {
     updateForward: (id: string, forward: Partial<PortForward>) => void;
     deleteForward: (id: string) => void;
     toggleForward: (id: string) => void;
+    startForward: (id: string) => Promise<void>;
+    stopForward: (id: string) => Promise<void>;
+    checkPortAvailability: (
+        port: number,
+    ) => Promise<{ available: boolean; suggestedPort?: number }>;
 
     settings: AppSettings;
     updateSettings: (settings: Partial<AppSettings>) => void;
@@ -40,12 +45,9 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
                 // @ts-expect-error global scope window extensions
                 const data = await window.electronAPI.ssh.loadConfig(configPath);
                 if (data) {
-                    // Quick validation against AppConfigSchema or just use it (assuming valid for now)
                     if (data.hosts) setHosts(data.hosts);
                     if (data.settings) setSettings(data.settings);
 
-                    // We need to flatten forwards for the global view if we still want that,
-                    // or rely on host.forwards. For now, let's just populate the store's forwards.
                     const allForwards = data.hosts.flatMap((h: Host) => h.forwards || []);
                     setForwards(allForwards);
                 }
@@ -58,13 +60,40 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         void loadInitialData();
     }, []);
 
+    // Listen for tunnel status changes from main process
+    useEffect(() => {
+        try {
+            // @ts-expect-error global scope window extensions
+            window.electronAPI.ssh.onTunnelStatusChange(
+                (data: { forwardId: string; status: string; error?: string }) => {
+                    setForwards((prev) =>
+                        prev.map((f) => {
+                            if (f.id !== data.forwardId) return f;
+                            return { ...f, status: data.status } as PortForward;
+                        }),
+                    );
+                },
+            );
+        } catch {
+            // Not in Electron environment
+        }
+
+        return () => {
+            try {
+                // @ts-expect-error global scope window extensions
+                window.electronAPI.ssh.removeTunnelStatusListener();
+            } catch {
+                // Not in Electron environment
+            }
+        };
+    }, []);
+
     // Save on Change
     useEffect(() => {
         if (!isLoaded) return;
 
         const saveConfig = async () => {
             try {
-                // To keep the single source of truth, map global forwards back to their hosts before saving
                 const hostsWithForwards = hosts.map((h) => ({
                     ...h,
                     forwards: forwards.filter((f) => f.hostId === h.id),
@@ -82,15 +111,12 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
 
                 // @ts-expect-error global scope window extensions
                 await window.electronAPI.ssh.saveConfig(configPath, configData);
-
-                // Optionally auto-generate SSH config if enabled
-                // await window.electronAPI.ssh.generateSshConfig('~/.ssh/config.d/ssh-manager.conf', configData);
             } catch (err) {
                 console.error('Failed to save config', err);
             }
         };
 
-        const timer = setTimeout(saveConfig, 500); // debounce save
+        const timer = setTimeout(saveConfig, 500);
         return () => clearTimeout(timer);
     }, [hosts, forwards, settings, isLoaded]);
 
@@ -141,6 +167,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         setForwards((prev) => prev.filter((f) => f.id !== id));
     }, []);
 
+    // Simple toggle (used for quick UI state switching)
     const toggleForward = useCallback((id: string) => {
         setForwards((prev) =>
             prev.map((f) => {
@@ -151,6 +178,76 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
                 } as PortForward;
             }),
         );
+    }, []);
+
+    // Real IPC-backed tunnel start
+    const startForward = useCallback(
+        async (id: string) => {
+            const forward = forwards.find((f) => f.id === id);
+            if (!forward) return;
+
+            const host = hosts.find((h) => h.id === forward.hostId);
+            if (!host) return;
+
+            try {
+                // @ts-expect-error global scope window extensions
+                await window.electronAPI.ssh.startTunnel(
+                    {
+                        id: forward.id,
+                        type: forward.type,
+                        localPort: forward.localPort,
+                        remoteHost: forward.remoteHost,
+                        remotePort: forward.remotePort,
+                        localHost: forward.localHost,
+                        bindAddress: forward.bindAddress,
+                        gatewayPorts: forward.gatewayPorts,
+                        restartOnDisconnect: forward.restartOnDisconnect,
+                    },
+                    {
+                        name: host.name,
+                        hostname: host.hostname,
+                        port: host.port,
+                        username: host.username,
+                        identityFile: host.identityFile,
+                    },
+                    settings.sshBinaryPath,
+                );
+
+                setForwards((prev) =>
+                    prev.map((f) => (f.id === id ? { ...f, status: 'running' as const } : f)),
+                );
+            } catch (err) {
+                console.error('Failed to start tunnel', err);
+                setForwards((prev) =>
+                    prev.map((f) => (f.id === id ? { ...f, status: 'error' as const } : f)),
+                );
+            }
+        },
+        [forwards, hosts, settings.sshBinaryPath],
+    );
+
+    // Real IPC-backed tunnel stop
+    const stopForward = useCallback(async (id: string) => {
+        try {
+            // @ts-expect-error global scope window extensions
+            await window.electronAPI.ssh.stopTunnel(id);
+            setForwards((prev) =>
+                prev.map((f) => (f.id === id ? { ...f, status: 'stopped' as const } : f)),
+            );
+        } catch (err) {
+            console.error('Failed to stop tunnel', err);
+        }
+    }, []);
+
+    // Port availability check
+    const checkPortAvailability = useCallback(async (port: number) => {
+        try {
+            // @ts-expect-error global scope window extensions
+            return await window.electronAPI.ssh.checkPort(port);
+        } catch (err) {
+            console.error('Failed to check port', err);
+            return { available: true };
+        }
     }, []);
 
     const updateSettings = useCallback((updates: Partial<AppSettings>) => {
@@ -178,6 +275,9 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
                 updateForward,
                 deleteForward,
                 toggleForward,
+                startForward,
+                stopForward,
+                checkPortAvailability,
                 settings,
                 updateSettings,
             }}>

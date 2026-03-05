@@ -19,7 +19,14 @@ export type AppSettings = z.infer<typeof AppSettingsSchema>;
 
 export interface ForwardPreset {
     name: string;
+    description: string;
     localPort: number;
     remoteHost: string;
     remotePort: number;
+}
+
+export interface TunnelProcess {
+    forwardId: string;
+    pid: number;
+    startedAt: number;
 }
