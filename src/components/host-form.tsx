@@ -1,16 +1,10 @@
 import { useForm } from '@tanstack/react-form';
 import { useNavigate } from '@tanstack/react-router';
-import { ArrowLeftIcon } from 'lucide-react';
+import { ArrowLeftIcon, PlusIcon, TrashIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 import type { Host } from '@/lib/types';
 
-import {
-    Accordion,
-    AccordionContent,
-    AccordionItem,
-    AccordionTrigger,
-} from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -37,6 +31,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppStore } from '@/lib/store';
 
 interface HostFormProps {
@@ -54,19 +49,52 @@ export function HostForm({ host }: HostFormProps) {
             hostname: host?.hostname ?? '',
             port: host?.port ?? 22,
             username: host?.username ?? '',
-            authType: host?.authType ?? ('key' as const),
+            authType: host?.authType ?? 'key',
             identityFile: host?.identityFile ?? '',
+
+            // Network
+            proxyJump: host?.proxyJump ?? '',
+            connectTimeout: host?.connectTimeout ?? 10,
             compression: host?.compression ?? false,
-            connectTimeout: host?.connectTimeout ?? 30,
             keepAlive: host?.keepAlive ?? true,
+            serverAliveInterval: host?.serverAliveInterval ?? 60,
+            serverAliveCountMax: host?.serverAliveCountMax ?? 3,
+
+            // Security
+            strictHostKeyChecking: host?.strictHostKeyChecking ?? 'ask',
+            forwardAgent: host?.forwardAgent ?? false,
+            identitiesOnly: host?.identitiesOnly ?? false,
+
+            // Terminal
+            requestTTY: host?.requestTTY ?? false,
+            terminalType: host?.terminalType ?? '',
+
+            // Advanced / Custom
+            customOptions: host?.customOptions ?? [],
+
+            // Port Forwards specific to this host (to be mapped back globally on save depending on the store, but we handle it together here)
+            forwards:
+                host?.forwards?.map((f) => ({
+                    name: f.name,
+                    description: f.description ?? '',
+                    hostId: f.hostId,
+                    type: f.type,
+                    localPort: f.localPort,
+                    remoteHost: f.remoteHost ?? '',
+                    remotePort: f.remotePort ?? 0,
+                    localHost: f.localHost ?? '',
+                })) ?? [],
         },
 
         onSubmit: async ({ value }) => {
+            const castValue = value as unknown as Omit<Host, 'id' | 'status'>;
             if (isEditing && host) {
-                updateHost(host.id, value);
+                // we treat forwards as part of the host object when updating the store
+                // the store might extract it globally if needed, or we just save it as part of host
+                updateHost(host.id, castValue);
                 toast.success(`Host "${value.name}" updated`);
             } else {
-                addHost(value);
+                addHost(castValue);
                 toast.success(`Host "${value.name}" added`);
             }
             void navigate({ to: '/' });
@@ -74,10 +102,10 @@ export function HostForm({ host }: HostFormProps) {
     });
 
     return (
-        <div className='mx-auto w-full max-w-2xl'>
+        <div className='mx-auto w-full max-w-4xl'>
             <div className='mb-6'>
                 <Button variant='ghost' size='sm' onClick={() => void navigate({ to: '/' })}>
-                    <ArrowLeftIcon />
+                    <ArrowLeftIcon className='mr-2 h-4 w-4' />
                     Back to Hosts
                 </Button>
             </div>
@@ -99,101 +127,28 @@ export function HostForm({ host }: HostFormProps) {
                             void form.handleSubmit();
                         }}
                         className='space-y-6'>
-                        {/* Basic Information */}
-                        <div className='space-y-1'>
-                            <h4 className='text-sm leading-none font-medium'>Basic Information</h4>
-                            <p className='text-sm text-muted-foreground'>SSH connection details.</p>
-                        </div>
-                        <FieldGroup>
-                            <form.Field
-                                name='name'
-                                children={(field) => {
-                                    const isInvalid =
-                                        field.state.meta.isTouched && !field.state.meta.isValid;
-                                    return (
-                                        <Field data-invalid={isInvalid}>
-                                            <FieldLabel htmlFor={field.name}>
-                                                Connection Name
-                                            </FieldLabel>
-                                            <Input
-                                                id={field.name}
-                                                name={field.name}
-                                                value={field.state.value}
-                                                onBlur={field.handleBlur}
-                                                onChange={(e) => field.handleChange(e.target.value)}
-                                                aria-invalid={isInvalid}
-                                                placeholder='prod-server'
-                                                autoComplete='off'
-                                            />
-                                            {isInvalid && (
-                                                <FieldError errors={field.state.meta.errors} />
-                                            )}
-                                        </Field>
-                                    );
-                                }}
-                            />
-                            <form.Field
-                                name='hostname'
-                                children={(field) => {
-                                    const isInvalid =
-                                        field.state.meta.isTouched && !field.state.meta.isValid;
-                                    return (
-                                        <Field data-invalid={isInvalid}>
-                                            <FieldLabel htmlFor={field.name}>Hostname</FieldLabel>
-                                            <Input
-                                                id={field.name}
-                                                name={field.name}
-                                                value={field.state.value}
-                                                onBlur={field.handleBlur}
-                                                onChange={(e) => field.handleChange(e.target.value)}
-                                                aria-invalid={isInvalid}
-                                                placeholder='10.0.0.5 or example.com'
-                                                autoComplete='off'
-                                            />
-                                            {isInvalid && (
-                                                <FieldError errors={field.state.meta.errors} />
-                                            )}
-                                        </Field>
-                                    );
-                                }}
-                            />
-                            <div className='grid grid-cols-2 gap-4'>
-                                <form.Field
-                                    name='port'
-                                    children={(field) => {
-                                        const isInvalid =
-                                            field.state.meta.isTouched && !field.state.meta.isValid;
-                                        return (
-                                            <Field data-invalid={isInvalid}>
-                                                <FieldLabel htmlFor={field.name}>Port</FieldLabel>
-                                                <Input
-                                                    id={field.name}
-                                                    name={field.name}
-                                                    type='number'
-                                                    value={field.state.value}
-                                                    onBlur={field.handleBlur}
-                                                    onChange={(e) =>
-                                                        field.handleChange(Number(e.target.value))
-                                                    }
-                                                    aria-invalid={isInvalid}
-                                                    placeholder='22'
-                                                />
-                                                {isInvalid && (
-                                                    <FieldError errors={field.state.meta.errors} />
-                                                )}
-                                            </Field>
-                                        );
-                                    }}
-                                />
-                                <form.Field
-                                    name='username'
-                                    children={(field) => {
-                                        const isInvalid =
-                                            field.state.meta.isTouched && !field.state.meta.isValid;
-                                        return (
-                                            <Field data-invalid={isInvalid}>
+                        <Tabs defaultValue='basic' className='w-full'>
+                            <TabsList className='grid w-full grid-cols-5'>
+                                <TabsTrigger value='basic'>Basic</TabsTrigger>
+                                <TabsTrigger value='network'>Network</TabsTrigger>
+                                <TabsTrigger value='forwards'>Port Forwards</TabsTrigger>
+                                <TabsTrigger value='security'>Security</TabsTrigger>
+                                <TabsTrigger value='advanced'>Advanced</TabsTrigger>
+                            </TabsList>
+
+                            {/* Section 1: Basic Information */}
+                            <TabsContent value='basic' className='space-y-6 pt-4'>
+                                <FieldGroup>
+                                    <form.Field
+                                        name='name'
+                                        children={(field) => (
+                                            <Field
+                                                data-invalid={
+                                                    field.state.meta.isTouched &&
+                                                    !field.state.meta.isValid
+                                                }>
                                                 <FieldLabel htmlFor={field.name}>
-                                                    Username
+                                                    Connection Name (Alias)
                                                 </FieldLabel>
                                                 <Input
                                                     id={field.name}
@@ -203,177 +158,669 @@ export function HostForm({ host }: HostFormProps) {
                                                     onChange={(e) =>
                                                         field.handleChange(e.target.value)
                                                     }
-                                                    aria-invalid={isInvalid}
-                                                    placeholder='ubuntu'
-                                                    autoComplete='off'
+                                                    placeholder='prod-server'
                                                 />
-                                                {isInvalid && (
-                                                    <FieldError errors={field.state.meta.errors} />
-                                                )}
+                                                {field.state.meta.isTouched &&
+                                                    !field.state.meta.isValid && (
+                                                        <FieldError
+                                                            errors={field.state.meta.errors}
+                                                        />
+                                                    )}
                                             </Field>
-                                        );
-                                    }}
-                                />
-                            </div>
-                        </FieldGroup>
+                                        )}
+                                    />
 
-                        {/* Authentication */}
-                        <div className='space-y-1'>
-                            <h4 className='text-sm leading-none font-medium'>Authentication</h4>
-                            <p className='text-sm text-muted-foreground'>
-                                How to authenticate with the host.
-                            </p>
-                        </div>
-                        <FieldGroup>
-                            <form.Field
-                                name='authType'
-                                children={(field) => {
-                                    const isInvalid =
-                                        field.state.meta.isTouched && !field.state.meta.isValid;
-                                    return (
-                                        <Field data-invalid={isInvalid}>
-                                            <FieldLabel htmlFor='host-auth-type'>
-                                                Authentication Type
-                                            </FieldLabel>
-                                            <Select
-                                                name={field.name}
-                                                value={field.state.value}
-                                                onValueChange={(val) => {
-                                                    if (val)
-                                                        field.handleChange(
-                                                            val as 'key' | 'password',
-                                                        );
-                                                }}>
-                                                <SelectTrigger id='host-auth-type'>
-                                                    <SelectValue placeholder='Select auth type' />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value='key'>SSH Key</SelectItem>
-                                                    <SelectItem value='password'>
-                                                        Password
-                                                    </SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            {isInvalid && (
-                                                <FieldError errors={field.state.meta.errors} />
+                                    <div className='grid grid-cols-2 gap-4'>
+                                        <form.Field
+                                            name='hostname'
+                                            children={(field) => (
+                                                <Field
+                                                    data-invalid={
+                                                        field.state.meta.isTouched &&
+                                                        !field.state.meta.isValid
+                                                    }>
+                                                    <FieldLabel htmlFor={field.name}>
+                                                        Hostname / IP
+                                                    </FieldLabel>
+                                                    <Input
+                                                        id={field.name}
+                                                        name={field.name}
+                                                        value={field.state.value}
+                                                        onBlur={field.handleBlur}
+                                                        onChange={(e) =>
+                                                            field.handleChange(e.target.value)
+                                                        }
+                                                        placeholder='10.0.0.5 or example.com'
+                                                    />
+                                                </Field>
                                             )}
-                                        </Field>
-                                    );
-                                }}
-                            />
-                            <form.Field
-                                name='identityFile'
-                                children={(field) => {
-                                    return (
-                                        <Field>
-                                            <FieldLabel htmlFor={field.name}>
-                                                Identity File
-                                            </FieldLabel>
-                                            <Input
-                                                id={field.name}
-                                                name={field.name}
-                                                value={field.state.value}
-                                                onBlur={field.handleBlur}
-                                                onChange={(e) => field.handleChange(e.target.value)}
-                                                placeholder='~/.ssh/id_rsa'
-                                                autoComplete='off'
-                                            />
-                                            <FieldDescription>
-                                                Path to your SSH private key file.
-                                            </FieldDescription>
-                                        </Field>
-                                    );
-                                }}
-                            />
-                        </FieldGroup>
+                                        />
+                                        <form.Field
+                                            name='port'
+                                            children={(field) => (
+                                                <Field>
+                                                    <FieldLabel htmlFor={field.name}>
+                                                        Port
+                                                    </FieldLabel>
+                                                    <Input
+                                                        id={field.name}
+                                                        type='number'
+                                                        value={field.state.value}
+                                                        onChange={(e) =>
+                                                            field.handleChange(
+                                                                Number(e.target.value),
+                                                            )
+                                                        }
+                                                        placeholder='22'
+                                                    />
+                                                </Field>
+                                            )}
+                                        />
+                                    </div>
 
-                        {/* Advanced Settings */}
-                        <Accordion>
-                            <AccordionItem value='advanced'>
-                                <AccordionTrigger className='text-sm font-medium'>
-                                    Advanced Settings
-                                </AccordionTrigger>
-                                <AccordionContent className='pt-4'>
-                                    <FieldGroup>
+                                    <form.Field
+                                        name='username'
+                                        children={(field) => (
+                                            <Field>
+                                                <FieldLabel htmlFor={field.name}>
+                                                    Username
+                                                </FieldLabel>
+                                                <Input
+                                                    id={field.name}
+                                                    value={field.state.value}
+                                                    onChange={(e) =>
+                                                        field.handleChange(e.target.value)
+                                                    }
+                                                    placeholder='ubuntu'
+                                                />
+                                            </Field>
+                                        )}
+                                    />
+
+                                    <div className='grid grid-cols-2 gap-4'>
+                                        <form.Field
+                                            name='authType'
+                                            children={(field) => (
+                                                <Field>
+                                                    <FieldLabel htmlFor='host-auth-type'>
+                                                        Authentication Type
+                                                    </FieldLabel>
+                                                    <Select
+                                                        value={field.state.value}
+                                                        onValueChange={(val: any) =>
+                                                            field.handleChange(val)
+                                                        }>
+                                                        <SelectTrigger id='host-auth-type'>
+                                                            <SelectValue placeholder='Select auth type' />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value='key'>
+                                                                SSH Key
+                                                            </SelectItem>
+                                                            <SelectItem value='password'>
+                                                                Password
+                                                            </SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </Field>
+                                            )}
+                                        />
+
+                                        <form.Subscribe
+                                            selector={(state) => state.values.authType}
+                                            children={(authType) =>
+                                                authType === 'key' ? (
+                                                    <form.Field
+                                                        name='identityFile'
+                                                        children={(field) => (
+                                                            <Field>
+                                                                <FieldLabel htmlFor={field.name}>
+                                                                    Identity File (optional)
+                                                                </FieldLabel>
+                                                                <Input
+                                                                    id={field.name}
+                                                                    value={field.state.value}
+                                                                    onChange={(e) =>
+                                                                        field.handleChange(
+                                                                            e.target.value,
+                                                                        )
+                                                                    }
+                                                                    placeholder='~/.ssh/id_rsa'
+                                                                />
+                                                            </Field>
+                                                        )}
+                                                    />
+                                                ) : (
+                                                    <div className='flex items-center pt-8 text-sm text-muted-foreground'>
+                                                        Password will be prompted on connect.
+                                                    </div>
+                                                )
+                                            }
+                                        />
+                                    </div>
+                                </FieldGroup>
+                            </TabsContent>
+
+                            {/* Section 2: Network */}
+                            <TabsContent value='network' className='space-y-6 pt-4'>
+                                <FieldGroup>
+                                    <form.Field
+                                        name='proxyJump'
+                                        children={(field) => (
+                                            <Field>
+                                                <FieldLabel htmlFor={field.name}>
+                                                    Proxy Jump (Bastion)
+                                                </FieldLabel>
+                                                <Input
+                                                    id={field.name}
+                                                    value={field.state.value}
+                                                    onChange={(e) =>
+                                                        field.handleChange(e.target.value)
+                                                    }
+                                                    placeholder='bastion-host'
+                                                />
+                                                <FieldDescription>
+                                                    Pass another host's connection alias to jump
+                                                    through it.
+                                                </FieldDescription>
+                                            </Field>
+                                        )}
+                                    />
+
+                                    <div className='grid grid-cols-2 gap-4'>
+                                        <form.Field
+                                            name='connectTimeout'
+                                            children={(field) => (
+                                                <Field>
+                                                    <FieldLabel htmlFor={field.name}>
+                                                        Connect Timeout (s)
+                                                    </FieldLabel>
+                                                    <Input
+                                                        id={field.name}
+                                                        type='number'
+                                                        value={field.state.value}
+                                                        onChange={(e) =>
+                                                            field.handleChange(
+                                                                Number(e.target.value),
+                                                            )
+                                                        }
+                                                    />
+                                                </Field>
+                                            )}
+                                        />
+
                                         <form.Field
                                             name='compression'
                                             children={(field) => (
-                                                <Field orientation='horizontal'>
+                                                <Field orientation='horizontal' className='pt-8'>
                                                     <FieldContent>
                                                         <FieldLabel htmlFor='host-compression'>
                                                             Compression
                                                         </FieldLabel>
-                                                        <FieldDescription>
-                                                            Enable SSH compression.
-                                                        </FieldDescription>
                                                     </FieldContent>
                                                     <Switch
                                                         id='host-compression'
-                                                        name={field.name}
                                                         checked={field.state.value}
                                                         onCheckedChange={field.handleChange}
                                                     />
                                                 </Field>
                                             )}
                                         />
-                                        <form.Field
-                                            name='connectTimeout'
-                                            children={(field) => {
-                                                const isInvalid =
-                                                    field.state.meta.isTouched &&
-                                                    !field.state.meta.isValid;
-                                                return (
-                                                    <Field data-invalid={isInvalid}>
-                                                        <FieldLabel htmlFor={field.name}>
-                                                            Connect Timeout (seconds)
-                                                        </FieldLabel>
-                                                        <Input
-                                                            id={field.name}
-                                                            name={field.name}
-                                                            type='number'
-                                                            value={field.state.value}
-                                                            onBlur={field.handleBlur}
-                                                            onChange={(e) =>
-                                                                field.handleChange(
-                                                                    Number(e.target.value),
-                                                                )
-                                                            }
-                                                            aria-invalid={isInvalid}
-                                                        />
-                                                        {isInvalid && (
-                                                            <FieldError
-                                                                errors={field.state.meta.errors}
-                                                            />
-                                                        )}
-                                                    </Field>
-                                                );
-                                            }}
-                                        />
+                                    </div>
+
+                                    <div className='border-t pt-4'>
                                         <form.Field
                                             name='keepAlive'
                                             children={(field) => (
-                                                <Field orientation='horizontal'>
+                                                <Field orientation='horizontal' className='mb-4'>
                                                     <FieldContent>
                                                         <FieldLabel htmlFor='host-keepalive'>
-                                                            Keep Alive
+                                                            Enable Keep Alive
                                                         </FieldLabel>
                                                         <FieldDescription>
-                                                            Send keep-alive packets.
+                                                            Send packets to avoid connection drops
                                                         </FieldDescription>
                                                     </FieldContent>
                                                     <Switch
                                                         id='host-keepalive'
-                                                        name={field.name}
                                                         checked={field.state.value}
                                                         onCheckedChange={field.handleChange}
                                                     />
                                                 </Field>
                                             )}
                                         />
-                                    </FieldGroup>
-                                </AccordionContent>
-                            </AccordionItem>
-                        </Accordion>
+
+                                        <form.Subscribe
+                                            selector={(state) => state.values.keepAlive}
+                                            children={(keepAlive) =>
+                                                keepAlive && (
+                                                    <div className='mt-4 grid grid-cols-2 gap-4'>
+                                                        <form.Field
+                                                            name='serverAliveInterval'
+                                                            children={(field) => (
+                                                                <Field>
+                                                                    <FieldLabel
+                                                                        htmlFor={field.name}>
+                                                                        Alive Interval (s)
+                                                                    </FieldLabel>
+                                                                    <Input
+                                                                        type='number'
+                                                                        value={field.state.value}
+                                                                        onChange={(e) =>
+                                                                            field.handleChange(
+                                                                                Number(
+                                                                                    e.target.value,
+                                                                                ),
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                </Field>
+                                                            )}
+                                                        />
+                                                        <form.Field
+                                                            name='serverAliveCountMax'
+                                                            children={(field) => (
+                                                                <Field>
+                                                                    <FieldLabel
+                                                                        htmlFor={field.name}>
+                                                                        Max Alive Count
+                                                                    </FieldLabel>
+                                                                    <Input
+                                                                        type='number'
+                                                                        value={field.state.value}
+                                                                        onChange={(e) =>
+                                                                            field.handleChange(
+                                                                                Number(
+                                                                                    e.target.value,
+                                                                                ),
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                </Field>
+                                                            )}
+                                                        />
+                                                    </div>
+                                                )
+                                            }
+                                        />
+                                    </div>
+                                </FieldGroup>
+                            </TabsContent>
+
+                            {/* Section 3: Port Forwarding */}
+                            <TabsContent value='forwards' className='space-y-6 pt-4'>
+                                <form.Field
+                                    name='forwards'
+                                    mode='array'
+                                    children={(field) => (
+                                        <div className='space-y-4'>
+                                            {field.state.value.map((_, i) => (
+                                                <Card key={i} className='relative px-4 pt-4 pb-2'>
+                                                    <Button
+                                                        type='button'
+                                                        variant='ghost'
+                                                        size='icon'
+                                                        className='absolute top-2 right-2 text-destructive'
+                                                        onClick={() => field.removeValue(i)}>
+                                                        <TrashIcon className='h-4 w-4' />
+                                                    </Button>
+
+                                                    <div className='grid grid-cols-12 items-end gap-3'>
+                                                        <form.Field
+                                                            name={`forwards[${i}].name`}
+                                                            children={(subField) => (
+                                                                <Field className='col-span-3'>
+                                                                    <FieldLabel>Name</FieldLabel>
+                                                                    <Input
+                                                                        value={subField.state.value}
+                                                                        onChange={(e) =>
+                                                                            subField.handleChange(
+                                                                                e.target.value,
+                                                                            )
+                                                                        }
+                                                                        placeholder='postgres'
+                                                                    />
+                                                                </Field>
+                                                            )}
+                                                        />
+
+                                                        <form.Field
+                                                            name={`forwards[${i}].type`}
+                                                            children={(subField) => (
+                                                                <Field className='col-span-3'>
+                                                                    <FieldLabel>Type</FieldLabel>
+                                                                    <Select
+                                                                        value={subField.state.value}
+                                                                        onValueChange={(v: any) =>
+                                                                            subField.handleChange(v)
+                                                                        }>
+                                                                        <SelectTrigger>
+                                                                            <SelectValue />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            <SelectItem value='local'>
+                                                                                Local
+                                                                            </SelectItem>
+                                                                            <SelectItem value='remote'>
+                                                                                Remote
+                                                                            </SelectItem>
+                                                                            <SelectItem value='dynamic'>
+                                                                                Dynamic
+                                                                            </SelectItem>
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </Field>
+                                                            )}
+                                                        />
+
+                                                        <form.Field
+                                                            name={`forwards[${i}].localPort`}
+                                                            children={(subField) => (
+                                                                <Field className='col-span-2'>
+                                                                    <FieldLabel>
+                                                                        Local Port
+                                                                    </FieldLabel>
+                                                                    <Input
+                                                                        type='number'
+                                                                        value={subField.state.value}
+                                                                        onChange={(e) =>
+                                                                            subField.handleChange(
+                                                                                Number(
+                                                                                    e.target.value,
+                                                                                ),
+                                                                            )
+                                                                        }
+                                                                    />
+                                                                </Field>
+                                                            )}
+                                                        />
+
+                                                        {/* Hide remote fields if dynamic */}
+                                                        <form.Subscribe
+                                                            selector={(s) =>
+                                                                s.values.forwards[i]?.type
+                                                            }
+                                                            children={(type) =>
+                                                                type !== 'dynamic' && (
+                                                                    <>
+                                                                        <form.Field
+                                                                            name={`forwards[${i}].remoteHost`}
+                                                                            children={(
+                                                                                subField,
+                                                                            ) => (
+                                                                                <Field className='col-span-2'>
+                                                                                    <FieldLabel>
+                                                                                        Dest Host
+                                                                                    </FieldLabel>
+                                                                                    <Input
+                                                                                        value={
+                                                                                            subField
+                                                                                                .state
+                                                                                                .value ||
+                                                                                            ''
+                                                                                        }
+                                                                                        onChange={(
+                                                                                            e,
+                                                                                        ) =>
+                                                                                            subField.handleChange(
+                                                                                                e
+                                                                                                    .target
+                                                                                                    .value,
+                                                                                            )
+                                                                                        }
+                                                                                        placeholder='localhost'
+                                                                                    />
+                                                                                </Field>
+                                                                            )}
+                                                                        />
+                                                                        <form.Field
+                                                                            name={`forwards[${i}].remotePort`}
+                                                                            children={(
+                                                                                subField,
+                                                                            ) => (
+                                                                                <Field className='col-span-2'>
+                                                                                    <FieldLabel>
+                                                                                        Dest Port
+                                                                                    </FieldLabel>
+                                                                                    <Input
+                                                                                        type='number'
+                                                                                        value={
+                                                                                            subField
+                                                                                                .state
+                                                                                                .value ||
+                                                                                            ''
+                                                                                        }
+                                                                                        onChange={(
+                                                                                            e,
+                                                                                        ) =>
+                                                                                            subField.handleChange(
+                                                                                                Number(
+                                                                                                    e
+                                                                                                        .target
+                                                                                                        .value,
+                                                                                                ),
+                                                                                            )
+                                                                                        }
+                                                                                        placeholder='5432'
+                                                                                    />
+                                                                                </Field>
+                                                                            )}
+                                                                        />
+                                                                    </>
+                                                                )
+                                                            }
+                                                        />
+                                                    </div>
+                                                </Card>
+                                            ))}
+
+                                            <Button
+                                                type='button'
+                                                variant='outline'
+                                                className='w-full'
+                                                onClick={() =>
+                                                    field.pushValue({
+                                                        name: '',
+                                                        description: '',
+                                                        hostId: host?.id ?? crypto.randomUUID(),
+                                                        type: 'local',
+                                                        localPort: 8080,
+                                                        remoteHost: '',
+                                                        remotePort: 0,
+                                                        localHost: '',
+                                                    })
+                                                }>
+                                                <PlusIcon className='mr-2 h-4 w-4' />
+                                                Add Port Forward
+                                            </Button>
+                                        </div>
+                                    )}
+                                />
+                            </TabsContent>
+
+                            {/* Section 4: Security */}
+                            <TabsContent value='security' className='space-y-6 pt-4'>
+                                <FieldGroup>
+                                    <form.Field
+                                        name='strictHostKeyChecking'
+                                        children={(field) => (
+                                            <Field>
+                                                <FieldLabel>Strict Host Key Checking</FieldLabel>
+                                                <Select
+                                                    value={field.state.value}
+                                                    onValueChange={(v: any) =>
+                                                        field.handleChange(v)
+                                                    }>
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value='ask'>Ask</SelectItem>
+                                                        <SelectItem value='yes'>
+                                                            Yes (Strict)
+                                                        </SelectItem>
+                                                        <SelectItem value='no'>No</SelectItem>
+                                                        <SelectItem value='accept-new'>
+                                                            Accept New
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </Field>
+                                        )}
+                                    />
+
+                                    <form.Field
+                                        name='forwardAgent'
+                                        children={(field) => (
+                                            <Field orientation='horizontal'>
+                                                <FieldContent>
+                                                    <FieldLabel>Forward SSH Agent</FieldLabel>
+                                                    <FieldDescription>
+                                                        Allow remote host to securely use local SSH
+                                                        keys
+                                                    </FieldDescription>
+                                                </FieldContent>
+                                                <Switch
+                                                    checked={field.state.value}
+                                                    onCheckedChange={field.handleChange}
+                                                />
+                                            </Field>
+                                        )}
+                                    />
+
+                                    <form.Field
+                                        name='identitiesOnly'
+                                        children={(field) => (
+                                            <Field orientation='horizontal'>
+                                                <FieldContent>
+                                                    <FieldLabel>Identities Only</FieldLabel>
+                                                    <FieldDescription>
+                                                        Only use explicitly configured identity
+                                                        files
+                                                    </FieldDescription>
+                                                </FieldContent>
+                                                <Switch
+                                                    checked={field.state.value}
+                                                    onCheckedChange={field.handleChange}
+                                                />
+                                            </Field>
+                                        )}
+                                    />
+                                </FieldGroup>
+                            </TabsContent>
+
+                            {/* Section 5: Advanced */}
+                            <TabsContent value='advanced' className='space-y-6 pt-4'>
+                                <FieldGroup>
+                                    <div className='grid grid-cols-2 gap-4 border-b pb-6'>
+                                        <form.Field
+                                            name='requestTTY'
+                                            children={(field) => (
+                                                <Field orientation='horizontal'>
+                                                    <FieldContent>
+                                                        <FieldLabel>Request TTY</FieldLabel>
+                                                        <FieldDescription>
+                                                            Allocate pseudo-terminal
+                                                        </FieldDescription>
+                                                    </FieldContent>
+                                                    <Switch
+                                                        checked={field.state.value}
+                                                        onCheckedChange={field.handleChange}
+                                                    />
+                                                </Field>
+                                            )}
+                                        />
+                                        <form.Field
+                                            name='terminalType'
+                                            children={(field) => (
+                                                <Field>
+                                                    <FieldLabel>
+                                                        Terminal Type (optional)
+                                                    </FieldLabel>
+                                                    <Input
+                                                        value={field.state.value ?? ''}
+                                                        onChange={(e) =>
+                                                            field.handleChange(e.target.value)
+                                                        }
+                                                        placeholder='xterm-256color'
+                                                    />
+                                                </Field>
+                                            )}
+                                        />
+                                    </div>
+
+                                    <div className='pt-2'>
+                                        <h4 className='mb-4 text-sm font-medium'>
+                                            Custom SSH Options
+                                        </h4>
+                                        <form.Field
+                                            name='customOptions'
+                                            mode='array'
+                                            children={(field) => (
+                                                <div className='space-y-3'>
+                                                    {field.state.value.map((_, i) => (
+                                                        <div
+                                                            key={i}
+                                                            className='flex items-center gap-3'>
+                                                            <form.Field
+                                                                name={`customOptions[${i}].key`}
+                                                                children={(subField) => (
+                                                                    <Input
+                                                                        className='flex-1'
+                                                                        value={subField.state.value}
+                                                                        onChange={(e) =>
+                                                                            subField.handleChange(
+                                                                                e.target.value,
+                                                                            )
+                                                                        }
+                                                                        placeholder='Option Name'
+                                                                    />
+                                                                )}
+                                                            />
+                                                            <form.Field
+                                                                name={`customOptions[${i}].value`}
+                                                                children={(subField) => (
+                                                                    <Input
+                                                                        className='flex-1'
+                                                                        value={subField.state.value}
+                                                                        onChange={(e) =>
+                                                                            subField.handleChange(
+                                                                                e.target.value,
+                                                                            )
+                                                                        }
+                                                                        placeholder='Value'
+                                                                    />
+                                                                )}
+                                                            />
+                                                            <Button
+                                                                type='button'
+                                                                variant='ghost'
+                                                                size='icon'
+                                                                className='shrink-0 text-destructive'
+                                                                onClick={() =>
+                                                                    field.removeValue(i)
+                                                                }>
+                                                                <TrashIcon className='h-4 w-4' />
+                                                            </Button>
+                                                        </div>
+                                                    ))}
+                                                    <Button
+                                                        type='button'
+                                                        variant='secondary'
+                                                        size='sm'
+                                                        onClick={() =>
+                                                            field.pushValue({ key: '', value: '' })
+                                                        }>
+                                                        <PlusIcon className='mr-2 h-4 w-4' />
+                                                        Add Custom Option
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        />
+                                    </div>
+                                </FieldGroup>
+                            </TabsContent>
+                        </Tabs>
                     </form>
                 </CardContent>
                 <CardFooter className='flex justify-end gap-2 border-t pt-6'>

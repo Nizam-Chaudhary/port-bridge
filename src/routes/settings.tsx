@@ -22,7 +22,7 @@ export const Route = createFileRoute('/settings')({
 });
 
 function SettingsPage() {
-    const { settings, updateSettings } = useAppStore();
+    const { settings, updateSettings, hosts, addHost } = useAppStore();
 
     const form = useForm({
         defaultValues: {
@@ -103,12 +103,12 @@ function SettingsPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Export */}
+                    {/* Import / Export */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Export Settings</CardTitle>
+                            <CardTitle>Import & Export SSH Config</CardTitle>
                             <CardDescription>
-                                Export your configuration to SSH config files.
+                                Import from your existing config or export back to the system.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -116,15 +116,69 @@ function SettingsPage() {
                                 <Button
                                     type='button'
                                     variant='outline'
-                                    onClick={() => toast.success('Exported to ~/.ssh/config')}>
-                                    <DownloadIcon />
+                                    onClick={async () => {
+                                        try {
+                                            const api = (window as any).electronAPI;
+                                            const imported =
+                                                await api.ssh.importSshConfig('~/.ssh/config');
+                                            if (imported && imported.length > 0) {
+                                                imported.forEach((h: any) => {
+                                                    // Ensure it lacks an ID, so the store assigns one, or leave it if store handles it
+                                                    const { id: _id, status: _status, ...rest } = h;
+                                                    addHost(rest as any);
+                                                });
+                                                toast.success(
+                                                    `Imported ${imported.length} hosts from ~/.ssh/config`,
+                                                );
+                                            } else {
+                                                toast.info('No new hosts found to import.');
+                                            }
+                                        } catch (err) {
+                                            toast.error('Failed to import config');
+                                            console.error(err);
+                                        }
+                                    }}>
+                                    <DownloadIcon className='mr-2 h-4 w-4' />
+                                    Import from ~/.ssh/config
+                                </Button>
+                                <Button
+                                    type='button'
+                                    variant='outline'
+                                    onClick={async () => {
+                                        try {
+                                            const api = (window as any).electronAPI;
+                                            await api.ssh.generateSshConfig('~/.ssh/config', {
+                                                hosts,
+                                                settings,
+                                            });
+                                            toast.success('Exported to ~/.ssh/config');
+                                        } catch (err) {
+                                            console.error(err);
+                                            toast.error('Failed to export to ~/.ssh/config');
+                                        }
+                                    }}>
+                                    <DownloadIcon className='mr-2 h-4 w-4' />
                                     Export to ~/.ssh/config
                                 </Button>
                                 <Button
                                     type='button'
                                     variant='outline'
-                                    onClick={() => toast.success('Exported to ~/.ssh/config.d/')}>
-                                    <DownloadIcon />
+                                    onClick={async () => {
+                                        try {
+                                            const api = (window as any).electronAPI;
+                                            await api.ssh.generateSshConfig(
+                                                '~/.ssh/config.d/ssh-manager.conf',
+                                                { hosts, settings },
+                                            );
+                                            toast.success(
+                                                'Exported to ~/.ssh/config.d/ssh-manager.conf',
+                                            );
+                                        } catch (err) {
+                                            console.error(err);
+                                            toast.error('Failed to export to config.d');
+                                        }
+                                    }}>
+                                    <DownloadIcon className='mr-2 h-4 w-4' />
                                     Export to ~/.ssh/config.d
                                 </Button>
                             </div>

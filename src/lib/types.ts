@@ -1,41 +1,21 @@
-export type AuthType = 'key' | 'password';
+import { z } from 'zod';
 
-export interface Host {
-    id: string;
-    name: string;
-    hostname: string;
-    port: number;
-    username: string;
-    authType: AuthType;
-    identityFile?: string;
-    compression: boolean;
-    connectTimeout: number;
-    keepAlive: boolean;
-    status: 'connected' | 'disconnected' | 'error';
-}
+import {
+    HostSchema,
+    PortForwardSchema,
+    AppSettingsSchema,
+    AuthTypeSchema,
+    ForwardTypeSchema,
+    ForwardStatusSchema,
+} from './schema';
 
-export type ForwardType = 'local' | 'remote' | 'dynamic';
-export type ForwardStatus = 'running' | 'stopped' | 'error';
+export type AuthType = z.infer<typeof AuthTypeSchema>;
+export type ForwardType = z.infer<typeof ForwardTypeSchema>;
+export type ForwardStatus = z.infer<typeof ForwardStatusSchema>;
 
-export interface PortForward {
-    id: string;
-    name: string;
-    description?: string;
-    hostId: string;
-    type: ForwardType;
-    localPort: number;
-    remoteHost?: string;
-    remotePort?: number;
-    localHost?: string;
-    status: ForwardStatus;
-}
-
-export interface AppSettings {
-    sshBinaryPath: string;
-    configStoragePath: string;
-    autoStartTunnels: boolean;
-    restartOnDisconnect: boolean;
-}
+export type Host = z.infer<typeof HostSchema>;
+export type PortForward = z.infer<typeof PortForwardSchema>;
+export type AppSettings = z.infer<typeof AppSettingsSchema>;
 
 export interface ForwardPreset {
     name: string;
