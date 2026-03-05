@@ -64,11 +64,16 @@ export const HostSchema = z.object({
     status: z.enum(['connected', 'disconnected', 'error']).default('disconnected'),
 });
 
+// Terminal Emulator
+export const TerminalTypeSchema = z.enum(['kitty', 'alacritty', 'ghostty', 'custom']);
+
 // Settings
 export const AppSettingsSchema = z.object({
     configStoragePath: z.string().default('~/.config/ssh-manager/config.json'),
     autoStartTunnels: z.boolean().default(false),
     restartOnDisconnect: z.boolean().default(true),
+    terminal: TerminalTypeSchema.default('kitty'),
+    customTerminalPath: z.string().optional(),
 });
 
 // Main Config Structure for JSON
@@ -78,6 +83,7 @@ export const AppConfigSchema = z.object({
         configStoragePath: '~/.config/ssh-manager/config.json',
         autoStartTunnels: false,
         restartOnDisconnect: true,
+        terminal: 'kitty',
     }),
 });
 

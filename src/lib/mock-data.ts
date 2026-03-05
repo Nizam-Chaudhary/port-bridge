@@ -4,6 +4,7 @@ export const initialSettings: AppSettings = {
     configStoragePath: '~/.config/ssh-manager',
     autoStartTunnels: false,
     restartOnDisconnect: true,
+    terminal: 'kitty',
 };
 
 export const forwardPresets: ForwardPreset[] = [

@@ -42,7 +42,7 @@ export const Route = createFileRoute('/')({
 });
 
 function HostsPage() {
-    const { hosts, forwards, deleteHost, duplicateHost } = useAppStore();
+    const { hosts, forwards, deleteHost, duplicateHost, connectHost } = useAppStore();
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
     const [deleteTarget, setDeleteTarget] = useState<Host | null>(null);
@@ -145,6 +145,17 @@ function HostsPage() {
                                                     <span className='sr-only'>Actions</span>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align='end'>
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            void connectHost(host.id);
+                                                            toast.success(
+                                                                `Connecting to ${host.name}...`,
+                                                            );
+                                                        }}>
+                                                        <TerminalIcon />
+                                                        Connect
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
                                                     <DropdownMenuItem
                                                         onClick={() => handleEdit(host)}>
                                                         <PencilIcon />

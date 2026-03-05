@@ -264,6 +264,77 @@ export function setupIpcHandlers() {
             throw error;
         }
     });
+
+    // 10. Open SSH connection in a terminal emulator
+    ipcMain.handle(
+        'ssh:openTerminal',
+        async (
+            _,
+            hostConfig: {
+                hostname: string;
+                port?: number;
+                username?: string;
+                identityFile?: string;
+            },
+            terminalSettings: {
+                terminal: 'kitty' | 'alacritty' | 'ghostty' | 'custom';
+                customTerminalPath?: string;
+            },
+        ) => {
+            try {
+                const { spawn } = require('node:child_process');
+
+                // Build SSH args
+                const sshArgs: string[] = [];
+                if (hostConfig.identityFile) {
+                    sshArgs.push('-i', hostConfig.identityFile);
+                }
+                if (hostConfig.port && hostConfig.port !== 22) {
+                    sshArgs.push('-p', hostConfig.port.toString());
+                }
+                const target = hostConfig.username
+                    ? `${hostConfig.username}@${hostConfig.hostname}`
+                    : hostConfig.hostname;
+                sshArgs.push(target);
+
+                let cmd: string;
+                let args: string[];
+
+                switch (terminalSettings.terminal) {
+                    case 'kitty':
+                        // kitty uses `kitten ssh` instead of ssh
+                        cmd = 'kitty';
+                        args = ['kitten', 'ssh', ...sshArgs];
+                        break;
+                    case 'alacritty':
+                        cmd = 'alacritty';
+                        args = ['-e', 'ssh', ...sshArgs];
+                        break;
+                    case 'ghostty':
+                        cmd = 'ghostty';
+                        args = ['-e', 'ssh', ...sshArgs];
+                        break;
+                    case 'custom':
+                        cmd = terminalSettings.customTerminalPath || 'xterm';
+                        args = ['-e', 'ssh', ...sshArgs];
+                        break;
+                    default:
+                        throw new Error(`Unknown terminal: ${String(terminalSettings.terminal)}`);
+                }
+
+                const proc = spawn(cmd, args, {
+                    detached: true,
+                    stdio: 'ignore',
+                });
+                proc.unref();
+
+                return { success: true, pid: proc.pid };
+            } catch (error) {
+                console.error('Error opening terminal:', error);
+                throw error;
+            }
+        },
+    );
 }
 
 // Cleanup all tunnels on app quit

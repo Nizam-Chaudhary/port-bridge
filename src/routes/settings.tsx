@@ -14,6 +14,13 @@ import {
     FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useAppStore } from '@/lib/store';
 
@@ -29,6 +36,8 @@ function SettingsPage() {
             configStoragePath: settings.configStoragePath,
             autoStartTunnels: settings.autoStartTunnels,
             restartOnDisconnect: settings.restartOnDisconnect,
+            terminal: settings.terminal,
+            customTerminalPath: settings.customTerminalPath ?? '',
         },
         onSubmit: async ({ value }) => {
             updateSettings(value);
@@ -76,6 +85,82 @@ function SettingsPage() {
                                             </FieldDescription>
                                         </Field>
                                     )}
+                                />
+                            </FieldGroup>
+                        </CardContent>
+                    </Card>
+
+                    {/* Terminal */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Terminal</CardTitle>
+                            <CardDescription>
+                                Terminal emulator used for SSH connections.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <FieldGroup>
+                                <form.Field
+                                    name='terminal'
+                                    children={(field) => (
+                                        <Field>
+                                            <FieldLabel htmlFor={field.name}>
+                                                Terminal Emulator
+                                            </FieldLabel>
+                                            <Select
+                                                value={field.state.value}
+                                                onValueChange={(val) => {
+                                                    if (val) field.handleChange(val);
+                                                }}>
+                                                <SelectTrigger id={field.name}>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value='kitty'>Kitty</SelectItem>
+                                                    <SelectItem value='alacritty'>
+                                                        Alacritty
+                                                    </SelectItem>
+                                                    <SelectItem value='ghostty'>Ghostty</SelectItem>
+                                                    <SelectItem value='custom'>Custom</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FieldDescription>
+                                                {field.state.value === 'kitty'
+                                                    ? 'Uses kitten ssh for connections.'
+                                                    : 'Opens SSH in the selected terminal.'}
+                                            </FieldDescription>
+                                        </Field>
+                                    )}
+                                />
+                                <form.Subscribe
+                                    selector={(state) => state.values.terminal}
+                                    children={(terminal) =>
+                                        terminal === 'custom' ? (
+                                            <form.Field
+                                                name='customTerminalPath'
+                                                children={(field) => (
+                                                    <Field>
+                                                        <FieldLabel htmlFor={field.name}>
+                                                            Custom Terminal Path
+                                                        </FieldLabel>
+                                                        <Input
+                                                            id={field.name}
+                                                            name={field.name}
+                                                            value={field.state.value}
+                                                            onBlur={field.handleBlur}
+                                                            onChange={(e) =>
+                                                                field.handleChange(e.target.value)
+                                                            }
+                                                            placeholder='/usr/bin/xterm'
+                                                        />
+                                                        <FieldDescription>
+                                                            Absolute path to the terminal binary.
+                                                        </FieldDescription>
+                                                    </Field>
+                                                )}
+                                            />
+                                        ) : null
+                                    }
                                 />
                             </FieldGroup>
                         </CardContent>

@@ -23,6 +23,7 @@ interface AppActions {
     updateForward: (id: string, forward: Partial<PortForward>) => void;
     deleteForward: (id: string) => void;
     toggleForward: (id: string) => void;
+    connectHost: (id: string) => Promise<void>;
     startForward: (id: string) => Promise<void>;
     stopForward: (id: string) => Promise<void>;
     checkPortAvailability: (
@@ -90,6 +91,30 @@ export const useAppStore = create<AppStore>()(
                             });
                         }
                     });
+                },
+
+                connectHost: async (id) => {
+                    const state = get();
+                    const host = state.hosts.find((h) => h.id === id);
+                    if (!host) return;
+
+                    try {
+                        // @ts-expect-error global scope window extensions
+                        await window.electronAPI.ssh.openTerminal(
+                            {
+                                hostname: host.hostname,
+                                port: host.port,
+                                username: host.username,
+                                identityFile: host.identityFile,
+                            },
+                            {
+                                terminal: state.settings.terminal,
+                                customTerminalPath: state.settings.customTerminalPath,
+                            },
+                        );
+                    } catch (err) {
+                        console.error('Failed to open terminal', err);
+                    }
                 },
 
                 addForward: (forward) => {
