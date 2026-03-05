@@ -5,7 +5,6 @@ import {
     MoreHorizontalIcon,
     PencilIcon,
     PlusIcon,
-    PlugIcon,
     SearchIcon,
     TrashIcon,
 } from 'lucide-react';
@@ -66,12 +65,6 @@ function HostsPage() {
 
     const handleAdd = () => {
         void navigate({ to: '/hosts/new' });
-    };
-
-    const handleConnect = (host: Host) => {
-        toast.success(`Connecting to ${host.name}...`, {
-            description: `${host.username}@${host.hostname}:${host.port}`,
-        });
     };
 
     const handleExport = (host: Host) => {
@@ -161,11 +154,6 @@ function HostsPage() {
                                                     <span className='sr-only'>Actions</span>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align='end'>
-                                                    <DropdownMenuItem
-                                                        onClick={() => handleConnect(host)}>
-                                                        <PlugIcon />
-                                                        Connect
-                                                    </DropdownMenuItem>
                                                     <DropdownMenuItem
                                                         onClick={() => handleEdit(host)}>
                                                         <PencilIcon />
