@@ -1,5 +1,10 @@
 import './index.css';
-import { RouterProvider, createRouter } from '@tanstack/react-router';
+import {
+    RouterProvider,
+    createBrowserHistory,
+    createHashHistory,
+    createRouter,
+} from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import ReactDOM from 'react-dom/client';
 
@@ -11,8 +16,10 @@ import { initializeStore } from './lib/store';
 // Import the generated route tree
 import { routeTree } from './routeTree.gen';
 
+const history = window.location.protocol === 'file:' ? createHashHistory() : createBrowserHistory();
+
 // Create a new router instance
-const router = createRouter({ routeTree });
+const router = createRouter({ routeTree, history });
 
 // Register the router instance for type safety
 declare module '@tanstack/react-router' {
