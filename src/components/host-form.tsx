@@ -1,6 +1,6 @@
 import { useForm } from '@tanstack/react-form';
 import { useNavigate } from '@tanstack/react-router';
-import { ArrowLeftIcon, PlusIcon, TrashIcon } from 'lucide-react';
+import { ArrowLeftIcon, PlusIcon, TrashIcon, FolderOpenIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 import type { Host } from '@/lib/types';
@@ -66,7 +66,9 @@ export function HostForm({ host, redirectTo }: HostFormProps) {
             // Security
             strictHostKeyChecking: host?.strictHostKeyChecking ?? 'ask',
             forwardAgent: host?.forwardAgent ?? false,
-            identitiesOnly: host?.identitiesOnly ?? false,
+            identitiesOnly:
+                host?.identitiesOnly ??
+                (host ? false : (host as Host | null)?.authType === 'key' ? true : true),
 
             // Terminal
             requestTTY: host?.requestTTY ?? false,
@@ -253,9 +255,15 @@ export function HostForm({ host, redirectTo }: HostFormProps) {
                                                     </FieldLabel>
                                                     <Select
                                                         value={field.state.value}
-                                                        onValueChange={(val: any) =>
-                                                            field.handleChange(val)
-                                                        }>
+                                                        onValueChange={(val: any) => {
+                                                            field.handleChange(val);
+                                                            if (!isEditing && val === 'key') {
+                                                                form.setFieldValue(
+                                                                    'identitiesOnly',
+                                                                    true,
+                                                                );
+                                                            }
+                                                        }}>
                                                         <SelectTrigger id='host-auth-type'>
                                                             <SelectValue placeholder='Select auth type' />
                                                         </SelectTrigger>
@@ -283,16 +291,55 @@ export function HostForm({ host, redirectTo }: HostFormProps) {
                                                                 <FieldLabel htmlFor={field.name}>
                                                                     Identity File (optional)
                                                                 </FieldLabel>
-                                                                <Input
-                                                                    id={field.name}
-                                                                    value={field.state.value}
-                                                                    onChange={(e) =>
-                                                                        field.handleChange(
-                                                                            e.target.value,
-                                                                        )
-                                                                    }
-                                                                    placeholder='~/.ssh/id_rsa'
-                                                                />
+                                                                <div className='flex items-center gap-2'>
+                                                                    <Input
+                                                                        id={field.name}
+                                                                        value={field.state.value}
+                                                                        onChange={(e) =>
+                                                                            field.handleChange(
+                                                                                e.target.value,
+                                                                            )
+                                                                        }
+                                                                        placeholder='~/.ssh/id_rsa'
+                                                                        className='flex-1'
+                                                                    />
+                                                                    <Button
+                                                                        type='button'
+                                                                        variant='outline'
+                                                                        size='icon'
+                                                                        onClick={async () => {
+                                                                            const api = (
+                                                                                window as any
+                                                                            ).electronAPI;
+                                                                            if (
+                                                                                api?.ssh
+                                                                                    ?.showOpenDialog
+                                                                            ) {
+                                                                                const result =
+                                                                                    await api.ssh.showOpenDialog(
+                                                                                        {
+                                                                                            properties:
+                                                                                                [
+                                                                                                    'openFile',
+                                                                                                    'showHiddenFiles',
+                                                                                                ],
+                                                                                        },
+                                                                                    );
+                                                                                if (
+                                                                                    !result.canceled &&
+                                                                                    result.filePaths
+                                                                                        .length > 0
+                                                                                ) {
+                                                                                    field.handleChange(
+                                                                                        result
+                                                                                            .filePaths[0],
+                                                                                    );
+                                                                                }
+                                                                            }
+                                                                        }}>
+                                                                        <FolderOpenIcon className='h-4 w-4' />
+                                                                    </Button>
+                                                                </div>
                                                             </Field>
                                                         )}
                                                     />

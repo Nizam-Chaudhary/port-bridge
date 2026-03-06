@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcMain, dialog } from 'electron';
 import SSHConfig from 'ssh-config';
 
 import { safelyReadFile, safelyWriteFile } from './fs-utils';
@@ -325,9 +325,21 @@ export function setupIpcHandlers() {
 
                 const env: NodeJS.ProcessEnv = { ...process.env };
                 if (hostConfig.password) {
-                    args = ['-e', cmd, ...args];
-                    cmd = 'sshpass';
                     env.SSHPASS = hostConfig.password;
+                    if (terminalSettings.terminal === 'kitty') {
+                        // kitty doesn't support sshpass wrapper natively with kitten ssh easily in this way
+                        // However, we can just use normal ssh if password is provided
+                        cmd = 'kitty';
+                        args = ['--', 'sshpass', '-e', 'ssh', ...sshArgs];
+                    } else if (
+                        terminalSettings.terminal === 'alacritty' ||
+                        terminalSettings.terminal === 'ghostty'
+                    ) {
+                        // alacritty -e sshpass -e ssh <args>
+                        args = ['-e', 'sshpass', '-e', 'ssh', ...sshArgs];
+                    } else if (terminalSettings.terminal === 'custom') {
+                        args = ['-e', 'sshpass', '-e', 'ssh', ...sshArgs];
+                    }
                 }
 
                 const proc = spawn(cmd, args, {
@@ -344,6 +356,17 @@ export function setupIpcHandlers() {
             }
         },
     );
+
+    // 11. Show open dialog
+    ipcMain.handle('dialog:showOpenDialog', async (_, options) => {
+        try {
+            const result = await dialog.showOpenDialog(options);
+            return result;
+        } catch (error) {
+            console.error('Error showing open dialog:', error);
+            throw error;
+        }
+    });
 }
 
 // Cleanup all tunnels on app quit

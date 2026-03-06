@@ -104,7 +104,7 @@ export const useAppStore = create<AppStore>()(
                     });
                 },
 
-                connectHost: async (id) => {
+                connectHost: async (id, password) => {
                     const state = get();
                     const host = state.hosts.find((h) => h.id === id);
                     if (!host) return;
@@ -117,6 +117,7 @@ export const useAppStore = create<AppStore>()(
                                 port: host.port,
                                 username: host.username,
                                 identityFile: host.identityFile,
+                                password: password || host.password,
                             },
                             {
                                 terminal: state.settings.terminal,

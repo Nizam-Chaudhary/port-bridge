@@ -24,6 +24,7 @@ import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -56,14 +57,22 @@ export const Route = createFileRoute('/port-forwarding')({
 });
 
 function PortForwardingPage() {
-    const { hosts, forwards, deleteForward, startForward, stopForward, toggleForwardPin } =
-        useAppStore();
+    const {
+        hosts,
+        forwards,
+        deleteForward,
+        startForward,
+        stopForward,
+        toggleForwardPin,
+        updateHost,
+    } = useAppStore();
     const navigate = useNavigate();
     const [hostFilter, setHostFilter] = useState('all');
     const [deleteTarget, setDeleteTarget] = useState<PortForward | null>(null);
     const [loadingForwards, setLoadingForwards] = useState<Set<string>>(new Set());
     const [promptTarget, setPromptTarget] = useState<PortForward | string | null>(null);
     const [promptPassword, setPromptPassword] = useState('');
+    const [promptSavePassword, setPromptSavePassword] = useState(false);
 
     const filteredForwards = useMemo(() => {
         if (hostFilter === 'all') return forwards;
@@ -168,6 +177,7 @@ function PortForwardingPage() {
             if (host?.authType === 'password' && !host.password) {
                 setPromptTarget(forward);
                 setPromptPassword('');
+                setPromptSavePassword(false);
                 return;
             }
             await _performStart(forward);
@@ -204,6 +214,7 @@ function PortForwardingPage() {
             if (hostForwards.length > 0) {
                 setPromptTarget(hostId);
                 setPromptPassword('');
+                setPromptSavePassword(false);
             }
             return;
         }
@@ -216,6 +227,11 @@ function PortForwardingPage() {
 
         const target = promptTarget;
         setPromptTarget(null);
+
+        const hostId = typeof target === 'string' ? target : target?.hostId;
+        if (promptSavePassword && hostId) {
+            updateHost(hostId, { password: promptPassword });
+        }
 
         if (typeof target === 'string') {
             await _performStartAll(target, promptPassword);
@@ -432,14 +448,28 @@ function PortForwardingPage() {
                             </DialogDescription>
                         </DialogHeader>
                         <div className='py-4'>
-                            <div className='space-y-2'>
-                                <Label htmlFor='password'>Password</Label>
-                                <Input
-                                    id='password'
-                                    type='password'
-                                    value={promptPassword}
-                                    onChange={(e) => setPromptPassword(e.target.value)}
-                                />
+                            <div className='space-y-4'>
+                                <div className='space-y-2'>
+                                    <Label htmlFor='password'>Password</Label>
+                                    <Input
+                                        id='password'
+                                        type='password'
+                                        value={promptPassword}
+                                        onChange={(e) => setPromptPassword(e.target.value)}
+                                    />
+                                </div>
+                                <div className='flex items-center space-x-2'>
+                                    <Checkbox
+                                        id='savePassword'
+                                        checked={promptSavePassword}
+                                        onCheckedChange={(checked) =>
+                                            setPromptSavePassword(!!checked)
+                                        }
+                                    />
+                                    <Label htmlFor='savePassword' className='text-sm font-normal'>
+                                        Save password
+                                    </Label>
+                                </div>
                             </div>
                         </div>
                         <DialogFooter>

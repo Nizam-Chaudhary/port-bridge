@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
             ipcRenderer.invoke('ssh:generateCommand', forwardConfig, hostConfig),
         openTerminal: (hostConfig: any, terminalSettings: any) =>
             ipcRenderer.invoke('ssh:openTerminal', hostConfig, terminalSettings),
+        showOpenDialog: (options: any) => ipcRenderer.invoke('dialog:showOpenDialog', options),
         // Status change listener
         onTunnelStatusChange: (
             callback: (data: { forwardId: string; status: string; error?: string }) => void,

@@ -1,3 +1,5 @@
+import type { FormEvent } from 'react';
+
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
     CopyIcon,
@@ -20,6 +22,15 @@ import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -28,6 +39,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAppStore } from '@/lib/store';
 
@@ -36,10 +48,14 @@ export const Route = createFileRoute('/')({
 });
 
 function HostsPage() {
-    const { hosts, deleteHost, duplicateHost, connectHost, toggleHostPin } = useAppStore();
+    const { hosts, deleteHost, duplicateHost, connectHost, toggleHostPin, updateHost } =
+        useAppStore();
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
     const [deleteTarget, setDeleteTarget] = useState<Host | null>(null);
+    const [promptTarget, setPromptTarget] = useState<Host | null>(null);
+    const [promptPassword, setPromptPassword] = useState('');
+    const [promptSavePassword, setPromptSavePassword] = useState(false);
 
     const filteredHosts = useMemo(() => {
         if (!search) return hosts;
@@ -82,6 +98,21 @@ function HostsPage() {
         });
     };
 
+    const handlePasswordPromptSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!promptPassword || !promptTarget) return;
+
+        const target = promptTarget;
+        setPromptTarget(null);
+
+        if (promptSavePassword) {
+            updateHost(target.id, { password: promptPassword });
+        }
+
+        void connectHost(target.id, promptPassword);
+        toast.success(`Connecting to ${target.name}...`);
+    };
+
     return (
         <>
             <PageHeader title='Hosts'>
@@ -121,8 +152,17 @@ function HostsPage() {
                                             key={host.id}
                                             host={host}
                                             onConnect={() => {
-                                                void connectHost(host.id);
-                                                toast.success(`Connecting to ${host.name}...`);
+                                                if (
+                                                    host.authType === 'password' &&
+                                                    !host.password
+                                                ) {
+                                                    setPromptTarget(host);
+                                                    setPromptPassword('');
+                                                    setPromptSavePassword(false);
+                                                } else {
+                                                    void connectHost(host.id);
+                                                    toast.success(`Connecting to ${host.name}...`);
+                                                }
                                             }}
                                             onTogglePin={() => toggleHostPin(host.id)}
                                             onEdit={() => handleEdit(host)}
@@ -149,8 +189,17 @@ function HostsPage() {
                                             key={host.id}
                                             host={host}
                                             onConnect={() => {
-                                                void connectHost(host.id);
-                                                toast.success(`Connecting to ${host.name}...`);
+                                                if (
+                                                    host.authType === 'password' &&
+                                                    !host.password
+                                                ) {
+                                                    setPromptTarget(host);
+                                                    setPromptPassword('');
+                                                    setPromptSavePassword(false);
+                                                } else {
+                                                    void connectHost(host.id);
+                                                    toast.success(`Connecting to ${host.name}...`);
+                                                }
                                             }}
                                             onTogglePin={() => toggleHostPin(host.id)}
                                             onEdit={() => handleEdit(host)}
@@ -201,6 +250,59 @@ function HostsPage() {
                     }
                 }}
             />
+
+            <Dialog
+                open={!!promptTarget}
+                onOpenChange={(open) => {
+                    if (!open) setPromptTarget(null);
+                }}>
+                <DialogContent>
+                    <form onSubmit={handlePasswordPromptSubmit}>
+                        <DialogHeader>
+                            <DialogTitle>Authentication Required</DialogTitle>
+                            <DialogDescription>
+                                Please enter the password for {promptTarget?.name}.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className='py-4'>
+                            <div className='space-y-4'>
+                                <div className='space-y-2'>
+                                    <Label htmlFor='password'>Password</Label>
+                                    <Input
+                                        id='password'
+                                        type='password'
+                                        value={promptPassword}
+                                        onChange={(e) => setPromptPassword(e.target.value)}
+                                    />
+                                </div>
+                                <div className='flex items-center space-x-2'>
+                                    <Checkbox
+                                        id='savePassword'
+                                        checked={promptSavePassword}
+                                        onCheckedChange={(checked) =>
+                                            setPromptSavePassword(!!checked)
+                                        }
+                                    />
+                                    <Label htmlFor='savePassword' className='text-sm font-normal'>
+                                        Save password
+                                    </Label>
+                                </div>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                type='button'
+                                variant='outline'
+                                onClick={() => setPromptTarget(null)}>
+                                Cancel
+                            </Button>
+                            <Button type='submit' disabled={!promptPassword}>
+                                Connect
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }
