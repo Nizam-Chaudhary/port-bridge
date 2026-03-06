@@ -5,25 +5,27 @@ import type { Host, PortForward } from './types';
 import { useAppStore } from './store';
 
 // Mock test data generator
-const createTestHost = (overrides?: Partial<Host>): Omit<Host, 'id' | 'status'> => ({
-    name: 'Test Host',
-    hostname: 'example.com',
-    port: 22,
-    username: 'testuser',
-    authType: 'password',
-    connectTimeout: 10,
-    keepAlive: true,
-    serverAliveInterval: 60,
-    serverAliveCountMax: 3,
-    compression: false,
-    strictHostKeyChecking: 'ask',
-    forwardAgent: false,
-    identitiesOnly: false,
-    requestTTY: false,
-    customOptions: [],
-    forwards: [],
-    ...overrides,
-});
+const createTestHost = (overrides?: Partial<Host>): Omit<Host, 'id' | 'status'> =>
+    ({
+        name: 'Test Host',
+        hostname: 'example.com',
+        port: 22,
+        username: 'testuser',
+        authType: 'password',
+        savePassword: true,
+        connectTimeout: 10,
+        keepAlive: true,
+        serverAliveInterval: 60,
+        serverAliveCountMax: 3,
+        compression: false,
+        strictHostKeyChecking: 'ask',
+        forwardAgent: false,
+        identitiesOnly: false,
+        requestTTY: false,
+        customOptions: [],
+        forwards: [],
+        ...overrides,
+    }) as Omit<Host, 'id' | 'status'>;
 
 const createTestForward = (
     hostId: string,

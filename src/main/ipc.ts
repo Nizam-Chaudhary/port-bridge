@@ -275,6 +275,7 @@ export function setupIpcHandlers() {
                 port?: number;
                 username?: string;
                 identityFile?: string;
+                password?: string;
             },
             terminalSettings: {
                 terminal: 'kitty' | 'alacritty' | 'ghostty' | 'custom';
@@ -322,9 +323,17 @@ export function setupIpcHandlers() {
                         throw new Error(`Unknown terminal: ${String(terminalSettings.terminal)}`);
                 }
 
+                const env: NodeJS.ProcessEnv = { ...process.env };
+                if (hostConfig.password) {
+                    args = ['-e', cmd, ...args];
+                    cmd = 'sshpass';
+                    env.SSHPASS = hostConfig.password;
+                }
+
                 const proc = spawn(cmd, args, {
                     detached: true,
                     stdio: 'ignore',
+                    env,
                 });
                 proc.unref();
 

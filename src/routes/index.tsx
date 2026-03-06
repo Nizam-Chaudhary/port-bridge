@@ -98,11 +98,13 @@ function HostsPage() {
                                         <div className='flex min-w-0 items-center gap-2'>
                                             <TooltipProvider>
                                                 <Tooltip>
-                                                    <TooltipTrigger className='block min-w-0 text-left'>
-                                                        <p className='truncate text-sm font-medium'>
-                                                            {host.name}
-                                                        </p>
-                                                    </TooltipTrigger>
+                                                    <TooltipTrigger
+                                                        render={
+                                                            <span className='block min-w-0 cursor-default truncate text-left text-sm font-medium'>
+                                                                {host.name}
+                                                            </span>
+                                                        }
+                                                    />
                                                     <TooltipContent>{host.name}</TooltipContent>
                                                 </Tooltip>
                                             </TooltipProvider>
@@ -114,11 +116,14 @@ function HostsPage() {
                                         </div>
                                         <TooltipProvider delay={300}>
                                             <Tooltip>
-                                                <TooltipTrigger className='block min-w-0 text-left'>
-                                                    <p className='truncate font-mono text-xs text-muted-foreground'>
-                                                        {host.username}@{host.hostname}:{host.port}
-                                                    </p>
-                                                </TooltipTrigger>
+                                                <TooltipTrigger
+                                                    render={
+                                                        <span className='block min-w-0 cursor-default truncate text-left font-mono text-xs text-muted-foreground'>
+                                                            {host.username}@{host.hostname}:
+                                                            {host.port}
+                                                        </span>
+                                                    }
+                                                />
                                                 <TooltipContent>
                                                     {host.username}@{host.hostname}:{host.port}
                                                 </TooltipContent>

@@ -232,14 +232,14 @@ function PortForwardingPage() {
                                                 variant='outline'
                                                 size='sm'
                                                 onClick={() => void handleStartAll(hostId)}>
-                                                <PlayIcon className='size-3' />
+                                                <PlayIcon className='size-3 text-green-500' />
                                                 Start All
                                             </Button>
                                             <Button
                                                 variant='outline'
                                                 size='sm'
                                                 onClick={() => void handleStopAll(hostId)}>
-                                                <SquareIcon className='size-3' />
+                                                <SquareIcon className='size-3 text-red-500' />
                                                 Stop All
                                             </Button>
                                         </div>
@@ -267,10 +267,8 @@ function PortForwardingPage() {
                                                             </span>
                                                             <TooltipProvider>
                                                                 <Tooltip>
-                                                                    <TooltipTrigger className='block min-w-0 text-left'>
-                                                                        <p className='truncate text-sm font-medium'>
-                                                                            {forward.name}
-                                                                        </p>
+                                                                    <TooltipTrigger className='block min-w-0 truncate text-left text-sm font-medium'>
+                                                                        {forward.name}
                                                                     </TooltipTrigger>
                                                                     <TooltipContent>
                                                                         {forward.name}
@@ -285,10 +283,8 @@ function PortForwardingPage() {
                                                         </div>
                                                         <TooltipProvider delay={300}>
                                                             <Tooltip>
-                                                                <TooltipTrigger className='block min-w-0 text-left'>
-                                                                    <p className='truncate font-mono text-xs text-muted-foreground'>
-                                                                        {formatPorts(forward)}
-                                                                    </p>
+                                                                <TooltipTrigger className='block min-w-0 truncate text-left font-mono text-xs text-muted-foreground'>
+                                                                    {formatPorts(forward)}
                                                                 </TooltipTrigger>
                                                                 <TooltipContent>
                                                                     {formatPorts(forward)}
@@ -302,12 +298,7 @@ function PortForwardingPage() {
                                                                 <TooltipTrigger
                                                                     render={
                                                                         <Button
-                                                                            variant={
-                                                                                forward.status ===
-                                                                                'running'
-                                                                                    ? 'outline'
-                                                                                    : 'default'
-                                                                            }
+                                                                            variant='outline'
                                                                             size='icon-sm'
                                                                             disabled={isLoading(
                                                                                 forward.id,
@@ -320,12 +311,12 @@ function PortForwardingPage() {
                                                                         />
                                                                     }>
                                                                     {isLoading(forward.id) ? (
-                                                                        <Loader2Icon className='animate-spin' />
+                                                                        <Loader2Icon className='animate-spin text-yellow-500' />
                                                                     ) : forward.status ===
                                                                       'running' ? (
-                                                                        <SquareIcon />
+                                                                        <SquareIcon className='text-red-500' />
                                                                     ) : (
-                                                                        <PlayIcon />
+                                                                        <PlayIcon className='text-green-500' />
                                                                     )}
                                                                     <span className='sr-only'>
                                                                         {forward.status ===

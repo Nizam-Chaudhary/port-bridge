@@ -29,6 +29,7 @@ interface HostConfig {
     port?: number;
     username?: string;
     identityFile?: string;
+    password?: string;
 }
 
 export class TunnelManager {
@@ -90,7 +91,8 @@ export class TunnelManager {
 
     generateSshCommand(forward: ForwardConfig, host: HostConfig, sshBinary: string): string {
         const args = this.buildSshArgs(forward, host);
-        return `${sshBinary} ${args.join(' ')}`;
+        const baseCmd = `${sshBinary} ${args.join(' ')}`;
+        return host.password ? `SSHPASS=*** sshpass -e ${baseCmd}` : baseCmd;
     }
 
     start(forward: ForwardConfig, host: HostConfig, sshBinary: string): { pid: number } {
@@ -101,9 +103,20 @@ export class TunnelManager {
 
         const args = this.buildSshArgs(forward, host);
 
-        const proc = spawn(sshBinary, args, {
+        let command = sshBinary;
+        let finalArgs = args;
+        const env: NodeJS.ProcessEnv = { ...process.env };
+
+        if (host.password) {
+            command = 'sshpass';
+            finalArgs = ['-e', sshBinary, ...args];
+            env.SSHPASS = host.password;
+        }
+
+        const proc = spawn(command, finalArgs, {
             stdio: ['ignore', 'pipe', 'pipe'],
             detached: false,
+            env,
         });
 
         const tunnelInfo: TunnelInfo = {

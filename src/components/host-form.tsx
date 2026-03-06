@@ -51,6 +51,8 @@ export function HostForm({ host, redirectTo }: HostFormProps) {
             port: host?.port ?? 22,
             username: host?.username ?? '',
             authType: host?.authType ?? 'key',
+            password: host?.password ?? '',
+            savePassword: host?.savePassword ?? false,
             identityFile: host?.identityFile ?? '',
 
             // Network
@@ -295,8 +297,68 @@ export function HostForm({ host, redirectTo }: HostFormProps) {
                                                         )}
                                                     />
                                                 ) : (
-                                                    <div className='flex items-center pt-8 text-sm text-muted-foreground'>
-                                                        Password will be prompted on connect.
+                                                    <div className='flex flex-col gap-4'>
+                                                        <form.Subscribe
+                                                            selector={(state) =>
+                                                                state.values.savePassword
+                                                            }
+                                                            children={(savePassword) =>
+                                                                savePassword ? (
+                                                                    <form.Field
+                                                                        name='password'
+                                                                        children={(field) => (
+                                                                            <Field>
+                                                                                <FieldLabel
+                                                                                    htmlFor={
+                                                                                        field.name
+                                                                                    }>
+                                                                                    Password
+                                                                                </FieldLabel>
+                                                                                <Input
+                                                                                    id={field.name}
+                                                                                    type='password'
+                                                                                    value={
+                                                                                        field.state
+                                                                                            .value
+                                                                                    }
+                                                                                    onChange={(e) =>
+                                                                                        field.handleChange(
+                                                                                            e.target
+                                                                                                .value,
+                                                                                        )
+                                                                                    }
+                                                                                    placeholder='Enter your password'
+                                                                                />
+                                                                            </Field>
+                                                                        )}
+                                                                    />
+                                                                ) : (
+                                                                    <div className='flex items-center text-sm text-muted-foreground'>
+                                                                        Password will be prompted on
+                                                                        connect.
+                                                                    </div>
+                                                                )
+                                                            }
+                                                        />
+                                                        <form.Field
+                                                            name='savePassword'
+                                                            children={(field) => (
+                                                                <Field orientation='horizontal'>
+                                                                    <FieldContent>
+                                                                        <FieldLabel htmlFor='save-password'>
+                                                                            Save Password
+                                                                        </FieldLabel>
+                                                                    </FieldContent>
+                                                                    <Switch
+                                                                        id='save-password'
+                                                                        checked={field.state.value}
+                                                                        onCheckedChange={
+                                                                            field.handleChange
+                                                                        }
+                                                                    />
+                                                                </Field>
+                                                            )}
+                                                        />
                                                     </div>
                                                 )
                                             }

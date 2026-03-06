@@ -38,6 +38,8 @@ export const HostSchema = z.object({
     port: z.number().int().positive().default(22),
     username: z.string().min(1, 'Username is required'),
     authType: AuthTypeSchema,
+    password: z.string().optional(),
+    savePassword: z.boolean().default(false),
     identityFile: z.string().optional(),
 
     // Network (Common Advanced)
