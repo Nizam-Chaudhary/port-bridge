@@ -7,17 +7,45 @@ import { MakerDeb } from '@electron-forge/maker-deb';
 import { FusesPlugin } from '@electron-forge/plugin-fuses';
 import { VitePlugin } from '@electron-forge/plugin-vite';
 import { FuseV1Options, FuseVersion } from '@electron/fuses';
+import path from 'node:path';
+
+const iconsDir = path.resolve(__dirname, 'public/icons');
 
 const config: ForgeConfig = {
     packagerConfig: {
         asar: true,
+        executableName: 'ssh-manager',
+        // Keep cross-platform icon wiring ready while non-DEB makers stay disabled.
+        // icon:
+        //     process.platform === 'win32'
+        //         ? path.join(iconsDir, 'ssh-manager.ico')
+        //         : process.platform === 'darwin'
+        //             ? path.join(iconsDir, 'ssh-manager.icns')
+        //             : path.join(iconsDir, 'ssh-manager.png'),
     },
     rebuildConfig: {},
     makers: [
-        // new MakerSquirrel({}),
+        // Keep Windows build disabled for now.
+        // new MakerSquirrel({
+        //     name: 'SSHManager',
+        //     setupIcon: path.join(iconsDir, 'ssh-manager.ico'),
+        //     iconUrl: 'https://example.com/ssh-manager.ico',
+        // }),
+        // Keep macOS build disabled for now.
         // new MakerZIP({}, ['darwin']),
-        // new MakerRpm({}),
-        new MakerDeb({}),
+        // Keep RPM build disabled for now.
+        // new MakerRpm({
+        //     options: {
+        //         productName: 'SSH Manager',
+        //         icon: path.join(iconsDir, 'ssh-manager.png'),
+        //     },
+        // }),
+        new MakerDeb({
+            options: {
+                productName: 'SSH Manager',
+                icon: path.join(iconsDir, 'ssh-manager.svg'),
+            },
+        }),
     ],
     plugins: [
         new VitePlugin({

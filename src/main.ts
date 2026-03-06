@@ -7,6 +7,13 @@ if (started) {
     app.quit();
 }
 
+app.setName('SSH Manager');
+
+// Keep this ready for Squirrel-enabled Windows builds.
+// if (process.platform === 'win32') {
+//     app.setAppUserModelId('com.squirrel.SSHManager.SSHManager');
+// }
+
 const createWindow = () => {
     // Create the browser window.
     const mainWindow = new BrowserWindow({
@@ -29,7 +36,7 @@ const createWindow = () => {
     }
 
     // Open the DevTools.
-    mainWindow.webContents.openDevTools();
+    // mainWindow.webContents.openDevTools();
 };
 
 // This method will be called when Electron has finished

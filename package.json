@@ -84,5 +84,6 @@
     "lint-staged": {
         "*": "oxfmt --no-error-on-unmatched-pattern",
         "*.{js,jsx,ts,tsx,mjs,cjs}": "bun run lint:type:fix"
-    }
+    },
+    "productName": "SSH Manager"
 }
