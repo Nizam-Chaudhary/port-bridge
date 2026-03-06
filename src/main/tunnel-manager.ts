@@ -30,6 +30,14 @@ interface HostConfig {
     username?: string;
     identityFile?: string;
     password?: string;
+    proxyJump?: string;
+    proxy?: {
+        hostname: string;
+        port?: number;
+        username?: string;
+        identityFile?: string;
+        password?: string;
+    };
 }
 
 export class TunnelManager {
@@ -37,20 +45,73 @@ export class TunnelManager {
     private statusCallback: ((forwardId: string, status: string, error?: string) => void) | null =
         null;
 
-    onStatusChange(cb: (forwardId: string, status: string, error?: string) => void) {
-        this.statusCallback = cb;
+    private shellQuote(arg: string): string {
+        return `'${arg.replace(/'/g, `'"'"'`)}'`;
     }
 
-    buildSshArgs(forward: ForwardConfig, host: HostConfig): string[] {
-        const args: string[] = ['-N']; // No remote command, tunnel only
+    private buildProxyArgs(host: HostConfig): string[] {
+        if (host.proxy?.hostname) {
+            const proxy = host.proxy;
+            const proxyTarget = proxy.username
+                ? `${proxy.username}@${proxy.hostname}`
+                : proxy.hostname;
+            const proxySshArgs: string[] = [];
 
-        // Host connection
+            if (proxy.identityFile) {
+                proxySshArgs.push('-i', proxy.identityFile);
+            }
+            if (proxy.port && proxy.port !== 22) {
+                proxySshArgs.push('-p', proxy.port.toString());
+            }
+
+            proxySshArgs.push(proxyTarget, '-W', '%h:%p');
+
+            const proxyCommandBase = proxySshArgs
+                .map((arg) => (arg === '%h:%p' ? arg : this.shellQuote(arg)))
+                .join(' ');
+
+            const proxyCommand = proxy.password
+                ? `env SSHPASS="$SSHPASS_PROXY" sshpass -e ssh ${proxyCommandBase}`
+                : `ssh ${proxyCommandBase}`;
+
+            return ['-o', `ProxyCommand=${proxyCommand}`];
+        }
+
+        if (host.proxyJump) {
+            return ['-J', host.proxyJump];
+        }
+
+        return [];
+    }
+
+    private buildConnectionArgs(host: HostConfig): string[] {
+        const args: string[] = [];
+
         if (host.identityFile) {
             args.push('-i', host.identityFile);
         }
         if (host.port && host.port !== 22) {
             args.push('-p', host.port.toString());
         }
+
+        args.push(...this.buildProxyArgs(host));
+
+        return args;
+    }
+
+    buildHostSshArgs(host: HostConfig): string[] {
+        const args = this.buildConnectionArgs(host);
+        const userHost = host.username ? `${host.username}@${host.hostname}` : host.hostname;
+        args.push(userHost);
+        return args;
+    }
+
+    onStatusChange(cb: (forwardId: string, status: string, error?: string) => void) {
+        this.statusCallback = cb;
+    }
+
+    buildSshArgs(forward: ForwardConfig, host: HostConfig): string[] {
+        const args: string[] = ['-N', ...this.buildConnectionArgs(host)]; // No remote command, tunnel only
 
         // Forward-specific flags
         const bindAddr = forward.bindAddress || '';
@@ -106,6 +167,10 @@ export class TunnelManager {
         let command = sshBinary;
         let finalArgs = args;
         const env: NodeJS.ProcessEnv = { ...process.env };
+
+        if (host.proxy?.password) {
+            env.SSHPASS_PROXY = host.proxy.password;
+        }
 
         if (host.password) {
             command = 'sshpass';

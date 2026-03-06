@@ -271,11 +271,20 @@ export function setupIpcHandlers() {
         async (
             _,
             hostConfig: {
+                name?: string;
                 hostname: string;
                 port?: number;
                 username?: string;
                 identityFile?: string;
                 password?: string;
+                proxyJump?: string;
+                proxy?: {
+                    hostname: string;
+                    port?: number;
+                    username?: string;
+                    identityFile?: string;
+                    password?: string;
+                };
             },
             terminalSettings: {
                 terminal: 'kitty' | 'alacritty' | 'ghostty' | 'custom';
@@ -285,18 +294,16 @@ export function setupIpcHandlers() {
             try {
                 const { spawn } = require('node:child_process');
 
-                // Build SSH args
-                const sshArgs: string[] = [];
-                if (hostConfig.identityFile) {
-                    sshArgs.push('-i', hostConfig.identityFile);
-                }
-                if (hostConfig.port && hostConfig.port !== 22) {
-                    sshArgs.push('-p', hostConfig.port.toString());
-                }
-                const target = hostConfig.username
-                    ? `${hostConfig.username}@${hostConfig.hostname}`
-                    : hostConfig.hostname;
-                sshArgs.push(target);
+                const sshArgs = tunnelManager.buildHostSshArgs({
+                    name: hostConfig.name || hostConfig.hostname,
+                    hostname: hostConfig.hostname,
+                    port: hostConfig.port,
+                    username: hostConfig.username,
+                    identityFile: hostConfig.identityFile,
+                    password: hostConfig.password,
+                    proxyJump: hostConfig.proxyJump,
+                    proxy: hostConfig.proxy,
+                });
 
                 let cmd: string;
                 let args: string[];
@@ -324,6 +331,9 @@ export function setupIpcHandlers() {
                 }
 
                 const env: NodeJS.ProcessEnv = { ...process.env };
+                if (hostConfig.proxy?.password) {
+                    env.SSHPASS_PROXY = hostConfig.proxy.password;
+                }
                 if (hostConfig.password) {
                     env.SSHPASS = hostConfig.password;
                     if (terminalSettings.terminal === 'kitty') {

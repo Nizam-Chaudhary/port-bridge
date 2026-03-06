@@ -18,6 +18,7 @@ import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import type { PortForward } from '@/lib/types';
+import type { Host } from '@/lib/types';
 
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { PageHeader } from '@/components/page-header';
@@ -71,8 +72,12 @@ function PortForwardingPage() {
     const [deleteTarget, setDeleteTarget] = useState<PortForward | null>(null);
     const [loadingForwards, setLoadingForwards] = useState<Set<string>>(new Set());
     const [promptTarget, setPromptTarget] = useState<PortForward | string | null>(null);
-    const [promptPassword, setPromptPassword] = useState('');
-    const [promptSavePassword, setPromptSavePassword] = useState(false);
+    const [promptHost, setPromptHost] = useState<Host | null>(null);
+    const [promptProxyHost, setPromptProxyHost] = useState<Host | null>(null);
+    const [promptTargetPassword, setPromptTargetPassword] = useState('');
+    const [promptProxyPassword, setPromptProxyPassword] = useState('');
+    const [promptSaveTargetPassword, setPromptSaveTargetPassword] = useState(false);
+    const [promptSaveProxyPassword, setPromptSaveProxyPassword] = useState(false);
 
     const filteredForwards = useMemo(() => {
         if (hostFilter === 'all') return forwards;
@@ -101,6 +106,28 @@ function PortForwardingPage() {
     }, [unpinnedForwards]);
 
     const getHostName = (hostId: string) => hosts.find((h) => h.id === hostId)?.name ?? 'Unknown';
+
+    const getProxyHost = (host: Host) =>
+        host.proxyJump ? hosts.find((candidate) => candidate.name === host.proxyJump) : undefined;
+
+    const openPasswordPrompt = (target: PortForward | string, host: Host) => {
+        const proxyHost = getProxyHost(host);
+        const needsTargetPassword = host.authType === 'password' && !host.password;
+        const needsProxyPassword = proxyHost?.authType === 'password' && !proxyHost.password;
+
+        if (!needsTargetPassword && !needsProxyPassword) {
+            return false;
+        }
+
+        setPromptTarget(target);
+        setPromptHost(host);
+        setPromptProxyHost(needsProxyPassword ? proxyHost : null);
+        setPromptTargetPassword('');
+        setPromptProxyPassword('');
+        setPromptSaveTargetPassword(false);
+        setPromptSaveProxyPassword(false);
+        return true;
+    };
 
     const formatPorts = (forward: PortForward) => {
         if (forward.type === 'dynamic') return `*:${forward.localPort}`;
@@ -141,10 +168,13 @@ function PortForwardingPage() {
         void navigate({ to: '/forwards/new' });
     };
 
-    const _performStart = async (forward: PortForward, password?: string) => {
+    const _performStart = async (
+        forward: PortForward,
+        passwords?: string | { target?: string; proxy?: string },
+    ) => {
         setLoadingForwards((prev) => new Set(prev).add(forward.id));
         try {
-            await startForward(forward.id, password);
+            await startForward(forward.id, passwords);
             toast.success(`Started ${forward.name}`);
         } catch {
             toast.error(`Failed to start ${forward.name}`);
@@ -174,22 +204,22 @@ function PortForwardingPage() {
             }
         } else {
             const host = hosts.find((h) => h.id === forward.hostId);
-            if (host?.authType === 'password' && !host.password) {
-                setPromptTarget(forward);
-                setPromptPassword('');
-                setPromptSavePassword(false);
+            if (host && openPasswordPrompt(forward, host)) {
                 return;
             }
             await _performStart(forward);
         }
     };
 
-    const _performStartAll = async (hostId: string, password?: string) => {
+    const _performStartAll = async (
+        hostId: string,
+        passwords?: string | { target?: string; proxy?: string },
+    ) => {
         const hostForwards = forwards.filter((f) => f.hostId === hostId && f.status !== 'running');
         for (const f of hostForwards) {
             try {
                 setLoadingForwards((prev) => new Set(prev).add(f.id));
-                await startForward(f.id, password);
+                await startForward(f.id, passwords);
             } catch {
                 toast.error(`Failed to start ${f.name}`);
             } finally {
@@ -207,36 +237,54 @@ function PortForwardingPage() {
 
     const handleStartAll = async (hostId: string) => {
         const host = hosts.find((h) => h.id === hostId);
-        if (host?.authType === 'password' && !host.password) {
-            const hostForwards = forwards.filter(
-                (f) => f.hostId === hostId && f.status !== 'running',
-            );
-            if (hostForwards.length > 0) {
-                setPromptTarget(hostId);
-                setPromptPassword('');
-                setPromptSavePassword(false);
-            }
+        if (!host) return;
+
+        const hostForwards = forwards.filter((f) => f.hostId === hostId && f.status !== 'running');
+        if (hostForwards.length === 0) {
             return;
         }
+
+        if (openPasswordPrompt(hostId, host)) {
+            return;
+        }
+
         await _performStartAll(hostId);
     };
 
     const handlePasswordPromptSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        if (!promptPassword) return;
+        if (!promptHost) return;
+
+        const needsTargetPassword = promptHost.authType === 'password' && !promptHost.password;
+        const needsProxyPassword =
+            promptProxyHost?.authType === 'password' && !promptProxyHost.password;
+
+        if (needsTargetPassword && !promptTargetPassword) return;
+        if (needsProxyPassword && !promptProxyPassword) return;
 
         const target = promptTarget;
         setPromptTarget(null);
+        setPromptHost(null);
+        setPromptProxyHost(null);
 
         const hostId = typeof target === 'string' ? target : target?.hostId;
-        if (promptSavePassword && hostId) {
-            updateHost(hostId, { password: promptPassword });
+        if (needsTargetPassword && promptSaveTargetPassword && hostId) {
+            updateHost(hostId, { password: promptTargetPassword });
+        }
+        if (promptProxyHost && needsProxyPassword && promptSaveProxyPassword) {
+            updateHost(promptProxyHost.id, { password: promptProxyPassword });
         }
 
         if (typeof target === 'string') {
-            await _performStartAll(target, promptPassword);
+            await _performStartAll(target, {
+                target: needsTargetPassword ? promptTargetPassword : undefined,
+                proxy: needsProxyPassword ? promptProxyPassword : undefined,
+            });
         } else if (target) {
-            await _performStart(target, promptPassword);
+            await _performStart(target, {
+                target: needsTargetPassword ? promptTargetPassword : undefined,
+                proxy: needsProxyPassword ? promptProxyPassword : undefined,
+            });
         }
     };
 
@@ -433,7 +481,11 @@ function PortForwardingPage() {
             <Dialog
                 open={!!promptTarget}
                 onOpenChange={(open) => {
-                    if (!open) setPromptTarget(null);
+                    if (!open) {
+                        setPromptTarget(null);
+                        setPromptHost(null);
+                        setPromptProxyHost(null);
+                    }
                 }}>
                 <DialogContent>
                     <form onSubmit={handlePasswordPromptSubmit}>
@@ -449,27 +501,69 @@ function PortForwardingPage() {
                         </DialogHeader>
                         <div className='py-4'>
                             <div className='space-y-4'>
-                                <div className='space-y-2'>
-                                    <Label htmlFor='password'>Password</Label>
-                                    <Input
-                                        id='password'
-                                        type='password'
-                                        value={promptPassword}
-                                        onChange={(e) => setPromptPassword(e.target.value)}
-                                    />
-                                </div>
-                                <div className='flex items-center space-x-2'>
-                                    <Checkbox
-                                        id='savePassword'
-                                        checked={promptSavePassword}
-                                        onCheckedChange={(checked) =>
-                                            setPromptSavePassword(!!checked)
-                                        }
-                                    />
-                                    <Label htmlFor='savePassword' className='text-sm font-normal'>
-                                        Save password
-                                    </Label>
-                                </div>
+                                {promptHost?.authType === 'password' && !promptHost.password && (
+                                    <>
+                                        <div className='space-y-2'>
+                                            <Label htmlFor='targetPassword'>
+                                                Host Password ({promptHost.name})
+                                            </Label>
+                                            <Input
+                                                id='targetPassword'
+                                                type='password'
+                                                value={promptTargetPassword}
+                                                onChange={(e) =>
+                                                    setPromptTargetPassword(e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div className='flex items-center space-x-2'>
+                                            <Checkbox
+                                                id='saveTargetPassword'
+                                                checked={promptSaveTargetPassword}
+                                                onCheckedChange={(checked) =>
+                                                    setPromptSaveTargetPassword(!!checked)
+                                                }
+                                            />
+                                            <Label
+                                                htmlFor='saveTargetPassword'
+                                                className='text-sm font-normal'>
+                                                Save host password
+                                            </Label>
+                                        </div>
+                                    </>
+                                )}
+
+                                {promptProxyHost && (
+                                    <>
+                                        <div className='space-y-2'>
+                                            <Label htmlFor='proxyPassword'>
+                                                Proxy Password ({promptProxyHost.name})
+                                            </Label>
+                                            <Input
+                                                id='proxyPassword'
+                                                type='password'
+                                                value={promptProxyPassword}
+                                                onChange={(e) =>
+                                                    setPromptProxyPassword(e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div className='flex items-center space-x-2'>
+                                            <Checkbox
+                                                id='saveProxyPassword'
+                                                checked={promptSaveProxyPassword}
+                                                onCheckedChange={(checked) =>
+                                                    setPromptSaveProxyPassword(!!checked)
+                                                }
+                                            />
+                                            <Label
+                                                htmlFor='saveProxyPassword'
+                                                className='text-sm font-normal'>
+                                                Save proxy password
+                                            </Label>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                         <DialogFooter>
@@ -479,7 +573,14 @@ function PortForwardingPage() {
                                 onClick={() => setPromptTarget(null)}>
                                 Cancel
                             </Button>
-                            <Button type='submit' disabled={!promptPassword}>
+                            <Button
+                                type='submit'
+                                disabled={
+                                    (promptHost?.authType === 'password' &&
+                                        !promptHost.password &&
+                                        !promptTargetPassword) ||
+                                    (!!promptProxyHost && !promptProxyPassword)
+                                }>
                                 Connect
                             </Button>
                         </DialogFooter>

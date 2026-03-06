@@ -25,8 +25,14 @@ interface AppActions {
     deleteForward: (id: string) => void;
     toggleForward: (id: string) => void;
     toggleForwardPin: (id: string) => void;
-    connectHost: (id: string, password?: string) => Promise<void>;
-    startForward: (id: string, password?: string) => Promise<void>;
+    connectHost: (
+        id: string,
+        passwords?: string | { target?: string; proxy?: string },
+    ) => Promise<void>;
+    startForward: (
+        id: string,
+        passwords?: string | { target?: string; proxy?: string },
+    ) => Promise<void>;
     stopForward: (id: string) => Promise<void>;
     checkPortAvailability: (
         port: number,
@@ -104,10 +110,18 @@ export const useAppStore = create<AppStore>()(
                     });
                 },
 
-                connectHost: async (id, password) => {
+                connectHost: async (id, passwords) => {
                     const state = get();
                     const host = state.hosts.find((h) => h.id === id);
                     if (!host) return;
+
+                    const targetPassword =
+                        typeof passwords === 'string' ? passwords : passwords?.target;
+                    const proxyPassword =
+                        typeof passwords === 'string' ? undefined : passwords?.proxy;
+                    const proxyHost = host.proxyJump
+                        ? state.hosts.find((h) => h.name === host.proxyJump)
+                        : undefined;
 
                     try {
                         // @ts-expect-error global scope window extensions
@@ -117,7 +131,17 @@ export const useAppStore = create<AppStore>()(
                                 port: host.port,
                                 username: host.username,
                                 identityFile: host.identityFile,
-                                password: password || host.password,
+                                password: targetPassword || host.password,
+                                proxyJump: host.proxyJump,
+                                proxy: proxyHost
+                                    ? {
+                                          hostname: proxyHost.hostname,
+                                          port: proxyHost.port,
+                                          username: proxyHost.username,
+                                          identityFile: proxyHost.identityFile,
+                                          password: proxyPassword || proxyHost.password,
+                                      }
+                                    : undefined,
                             },
                             {
                                 terminal: state.settings.terminal,
@@ -172,13 +196,21 @@ export const useAppStore = create<AppStore>()(
                     });
                 },
 
-                startForward: async (id, password) => {
+                startForward: async (id, passwords) => {
                     const state = get();
                     const forward = state.forwards.find((f) => f.id === id);
                     if (!forward) return;
 
                     const host = state.hosts.find((h) => h.id === forward.hostId);
                     if (!host) return;
+
+                    const targetPassword =
+                        typeof passwords === 'string' ? passwords : passwords?.target;
+                    const proxyPassword =
+                        typeof passwords === 'string' ? undefined : passwords?.proxy;
+                    const proxyHost = host.proxyJump
+                        ? state.hosts.find((h) => h.name === host.proxyJump)
+                        : undefined;
 
                     try {
                         // @ts-expect-error global scope window extensions
@@ -200,7 +232,17 @@ export const useAppStore = create<AppStore>()(
                                 port: host.port,
                                 username: host.username,
                                 identityFile: host.identityFile,
-                                password: password || host.password,
+                                password: targetPassword || host.password,
+                                proxyJump: host.proxyJump,
+                                proxy: proxyHost
+                                    ? {
+                                          hostname: proxyHost.hostname,
+                                          port: proxyHost.port,
+                                          username: proxyHost.username,
+                                          identityFile: proxyHost.identityFile,
+                                          password: proxyPassword || proxyHost.password,
+                                      }
+                                    : undefined,
                             },
                             'ssh',
                         );

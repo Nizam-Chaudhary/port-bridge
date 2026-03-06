@@ -54,8 +54,11 @@ function HostsPage() {
     const [search, setSearch] = useState('');
     const [deleteTarget, setDeleteTarget] = useState<Host | null>(null);
     const [promptTarget, setPromptTarget] = useState<Host | null>(null);
-    const [promptPassword, setPromptPassword] = useState('');
-    const [promptSavePassword, setPromptSavePassword] = useState(false);
+    const [promptProxyHost, setPromptProxyHost] = useState<Host | null>(null);
+    const [promptTargetPassword, setPromptTargetPassword] = useState('');
+    const [promptProxyPassword, setPromptProxyPassword] = useState('');
+    const [promptSaveTargetPassword, setPromptSaveTargetPassword] = useState(false);
+    const [promptSaveProxyPassword, setPromptSaveProxyPassword] = useState(false);
 
     const filteredHosts = useMemo(() => {
         if (!search) return hosts;
@@ -73,6 +76,28 @@ function HostsPage() {
 
     const handleEdit = (host: Host) => {
         void navigate({ to: '/hosts/edit/$hostId', params: { hostId: host.id } });
+    };
+
+    const getProxyHost = (host: Host) =>
+        host.proxyJump ? hosts.find((candidate) => candidate.name === host.proxyJump) : undefined;
+
+    const openPasswordPrompt = (host: Host) => {
+        const proxyHost = getProxyHost(host);
+        const needsTargetPassword = host.authType === 'password' && !host.password;
+        const needsProxyPassword = proxyHost?.authType === 'password' && !proxyHost.password;
+
+        if (!needsTargetPassword && !needsProxyPassword) {
+            void connectHost(host.id);
+            toast.success(`Connecting to ${host.name}...`);
+            return;
+        }
+
+        setPromptTarget(host);
+        setPromptProxyHost(needsProxyPassword ? proxyHost : null);
+        setPromptTargetPassword('');
+        setPromptProxyPassword('');
+        setPromptSaveTargetPassword(false);
+        setPromptSaveProxyPassword(false);
     };
 
     const handleAdd = () => {
@@ -100,16 +125,30 @@ function HostsPage() {
 
     const handlePasswordPromptSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        if (!promptPassword || !promptTarget) return;
+        if (!promptTarget) return;
+
+        const needsTargetPassword = promptTarget.authType === 'password' && !promptTarget.password;
+        const needsProxyPassword =
+            promptProxyHost?.authType === 'password' && !promptProxyHost.password;
+
+        if (needsTargetPassword && !promptTargetPassword) return;
+        if (needsProxyPassword && !promptProxyPassword) return;
 
         const target = promptTarget;
         setPromptTarget(null);
+        setPromptProxyHost(null);
 
-        if (promptSavePassword) {
-            updateHost(target.id, { password: promptPassword });
+        if (needsTargetPassword && promptSaveTargetPassword) {
+            updateHost(target.id, { password: promptTargetPassword });
+        }
+        if (promptProxyHost && needsProxyPassword && promptSaveProxyPassword) {
+            updateHost(promptProxyHost.id, { password: promptProxyPassword });
         }
 
-        void connectHost(target.id, promptPassword);
+        void connectHost(target.id, {
+            target: needsTargetPassword ? promptTargetPassword : undefined,
+            proxy: needsProxyPassword ? promptProxyPassword : undefined,
+        });
         toast.success(`Connecting to ${target.name}...`);
     };
 
@@ -151,19 +190,7 @@ function HostsPage() {
                                         <HostCard
                                             key={host.id}
                                             host={host}
-                                            onConnect={() => {
-                                                if (
-                                                    host.authType === 'password' &&
-                                                    !host.password
-                                                ) {
-                                                    setPromptTarget(host);
-                                                    setPromptPassword('');
-                                                    setPromptSavePassword(false);
-                                                } else {
-                                                    void connectHost(host.id);
-                                                    toast.success(`Connecting to ${host.name}...`);
-                                                }
-                                            }}
+                                            onConnect={() => openPasswordPrompt(host)}
                                             onTogglePin={() => toggleHostPin(host.id)}
                                             onEdit={() => handleEdit(host)}
                                             onDuplicate={() => duplicateHost(host.id)}
@@ -188,19 +215,7 @@ function HostsPage() {
                                         <HostCard
                                             key={host.id}
                                             host={host}
-                                            onConnect={() => {
-                                                if (
-                                                    host.authType === 'password' &&
-                                                    !host.password
-                                                ) {
-                                                    setPromptTarget(host);
-                                                    setPromptPassword('');
-                                                    setPromptSavePassword(false);
-                                                } else {
-                                                    void connectHost(host.id);
-                                                    toast.success(`Connecting to ${host.name}...`);
-                                                }
-                                            }}
+                                            onConnect={() => openPasswordPrompt(host)}
                                             onTogglePin={() => toggleHostPin(host.id)}
                                             onEdit={() => handleEdit(host)}
                                             onDuplicate={() => duplicateHost(host.id)}
@@ -254,7 +269,10 @@ function HostsPage() {
             <Dialog
                 open={!!promptTarget}
                 onOpenChange={(open) => {
-                    if (!open) setPromptTarget(null);
+                    if (!open) {
+                        setPromptTarget(null);
+                        setPromptProxyHost(null);
+                    }
                 }}>
                 <DialogContent>
                     <form onSubmit={handlePasswordPromptSubmit}>
@@ -266,27 +284,70 @@ function HostsPage() {
                         </DialogHeader>
                         <div className='py-4'>
                             <div className='space-y-4'>
-                                <div className='space-y-2'>
-                                    <Label htmlFor='password'>Password</Label>
-                                    <Input
-                                        id='password'
-                                        type='password'
-                                        value={promptPassword}
-                                        onChange={(e) => setPromptPassword(e.target.value)}
-                                    />
-                                </div>
-                                <div className='flex items-center space-x-2'>
-                                    <Checkbox
-                                        id='savePassword'
-                                        checked={promptSavePassword}
-                                        onCheckedChange={(checked) =>
-                                            setPromptSavePassword(!!checked)
-                                        }
-                                    />
-                                    <Label htmlFor='savePassword' className='text-sm font-normal'>
-                                        Save password
-                                    </Label>
-                                </div>
+                                {promptTarget?.authType === 'password' &&
+                                    !promptTarget.password && (
+                                        <>
+                                            <div className='space-y-2'>
+                                                <Label htmlFor='targetPassword'>
+                                                    Host Password ({promptTarget.name})
+                                                </Label>
+                                                <Input
+                                                    id='targetPassword'
+                                                    type='password'
+                                                    value={promptTargetPassword}
+                                                    onChange={(e) =>
+                                                        setPromptTargetPassword(e.target.value)
+                                                    }
+                                                />
+                                            </div>
+                                            <div className='flex items-center space-x-2'>
+                                                <Checkbox
+                                                    id='saveTargetPassword'
+                                                    checked={promptSaveTargetPassword}
+                                                    onCheckedChange={(checked) =>
+                                                        setPromptSaveTargetPassword(!!checked)
+                                                    }
+                                                />
+                                                <Label
+                                                    htmlFor='saveTargetPassword'
+                                                    className='text-sm font-normal'>
+                                                    Save host password
+                                                </Label>
+                                            </div>
+                                        </>
+                                    )}
+
+                                {promptProxyHost && (
+                                    <>
+                                        <div className='space-y-2'>
+                                            <Label htmlFor='proxyPassword'>
+                                                Proxy Password ({promptProxyHost.name})
+                                            </Label>
+                                            <Input
+                                                id='proxyPassword'
+                                                type='password'
+                                                value={promptProxyPassword}
+                                                onChange={(e) =>
+                                                    setPromptProxyPassword(e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div className='flex items-center space-x-2'>
+                                            <Checkbox
+                                                id='saveProxyPassword'
+                                                checked={promptSaveProxyPassword}
+                                                onCheckedChange={(checked) =>
+                                                    setPromptSaveProxyPassword(!!checked)
+                                                }
+                                            />
+                                            <Label
+                                                htmlFor='saveProxyPassword'
+                                                className='text-sm font-normal'>
+                                                Save proxy password
+                                            </Label>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                         <DialogFooter>
@@ -296,7 +357,14 @@ function HostsPage() {
                                 onClick={() => setPromptTarget(null)}>
                                 Cancel
                             </Button>
-                            <Button type='submit' disabled={!promptPassword}>
+                            <Button
+                                type='submit'
+                                disabled={
+                                    (promptTarget?.authType === 'password' &&
+                                        !promptTarget.password &&
+                                        !promptTargetPassword) ||
+                                    (!!promptProxyHost && !promptProxyPassword)
+                                }>
                                 Connect
                             </Button>
                         </DialogFooter>
