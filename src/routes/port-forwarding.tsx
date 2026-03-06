@@ -190,11 +190,13 @@ function PortForwardingPage() {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value='all'>All Hosts</SelectItem>
-                            {hosts.map((host) => (
-                                <SelectItem key={host.id} value={host.id}>
-                                    {host.name}
-                                </SelectItem>
-                            ))}
+                            {hosts
+                                .filter((host) => forwards.some((f) => f.hostId === host.id))
+                                .map((host) => (
+                                    <SelectItem key={host.id} value={host.id}>
+                                        {host.name}
+                                    </SelectItem>
+                                ))}
                         </SelectContent>
                     </Select>
                 </div>
