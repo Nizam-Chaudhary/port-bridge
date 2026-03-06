@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
     CopyIcon,
-    DownloadIcon,
     MoreHorizontalIcon,
     PencilIcon,
     PinIcon,
@@ -64,9 +63,22 @@ function HostsPage() {
         void navigate({ to: '/hosts/new', search: { redirectTo: undefined } });
     };
 
-    const handleExport = (host: Host) => {
-        toast.success(`Exported ${host.name}`, {
-            description: 'Host configuration copied to clipboard.',
+    const handleCopySshCommand = (host: Host) => {
+        let cmd = 'ssh';
+        if (host.identityFile) {
+            cmd += ` -i "${host.identityFile}"`;
+        }
+        if (host.identitiesOnly) {
+            cmd += ' -o IdentitiesOnly=yes';
+        }
+        if (host.port !== 22) {
+            cmd += ` -p ${host.port}`;
+        }
+        cmd += ` ${host.username}@${host.hostname}`;
+
+        void navigator.clipboard.writeText(cmd);
+        toast.success('SSH command copied', {
+            description: 'Command copied to clipboard.',
         });
     };
 
@@ -115,7 +127,7 @@ function HostsPage() {
                                             onTogglePin={() => toggleHostPin(host.id)}
                                             onEdit={() => handleEdit(host)}
                                             onDuplicate={() => duplicateHost(host.id)}
-                                            onExport={() => handleExport(host)}
+                                            onCopySshCommand={() => handleCopySshCommand(host)}
                                             onDelete={() => setDeleteTarget(host)}
                                         />
                                     ))}
@@ -143,7 +155,7 @@ function HostsPage() {
                                             onTogglePin={() => toggleHostPin(host.id)}
                                             onEdit={() => handleEdit(host)}
                                             onDuplicate={() => duplicateHost(host.id)}
-                                            onExport={() => handleExport(host)}
+                                            onCopySshCommand={() => handleCopySshCommand(host)}
                                             onDelete={() => setDeleteTarget(host)}
                                         />
                                     ))}
@@ -199,7 +211,7 @@ function HostCard({
     onTogglePin,
     onEdit,
     onDuplicate,
-    onExport,
+    onCopySshCommand,
     onDelete,
 }: {
     host: Host;
@@ -207,7 +219,7 @@ function HostCard({
     onTogglePin: () => void;
     onEdit: () => void;
     onDuplicate: () => void;
-    onExport: () => void;
+    onCopySshCommand: () => void;
     onDelete: () => void;
 }) {
     return (
@@ -279,9 +291,9 @@ function HostCard({
                                 <CopyIcon />
                                 Duplicate
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={onExport}>
-                                <DownloadIcon />
-                                Export
+                            <DropdownMenuItem onClick={onCopySshCommand}>
+                                <TerminalIcon />
+                                Copy SSH Command
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem variant='destructive' onClick={onDelete}>

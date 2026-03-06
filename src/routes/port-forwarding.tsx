@@ -1,3 +1,5 @@
+import type { FormEvent } from 'react';
+
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
     CopyIcon,
@@ -23,12 +25,22 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
@@ -50,6 +62,8 @@ function PortForwardingPage() {
     const [hostFilter, setHostFilter] = useState('all');
     const [deleteTarget, setDeleteTarget] = useState<PortForward | null>(null);
     const [loadingForwards, setLoadingForwards] = useState<Set<string>>(new Set());
+    const [promptTarget, setPromptTarget] = useState<PortForward | string | null>(null);
+    const [promptPassword, setPromptPassword] = useState('');
 
     const filteredForwards = useMemo(() => {
         if (hostFilter === 'all') return forwards;
@@ -118,20 +132,13 @@ function PortForwardingPage() {
         void navigate({ to: '/forwards/new' });
     };
 
-    const handleToggle = async (forward: PortForward) => {
+    const _performStart = async (forward: PortForward, password?: string) => {
         setLoadingForwards((prev) => new Set(prev).add(forward.id));
         try {
-            if (forward.status === 'running') {
-                await stopForward(forward.id);
-                toast.info(`Stopped ${forward.name}`);
-            } else {
-                await startForward(forward.id);
-                toast.success(`Started ${forward.name}`);
-            }
+            await startForward(forward.id, password);
+            toast.success(`Started ${forward.name}`);
         } catch {
-            toast.error(
-                `Failed to ${forward.status === 'running' ? 'stop' : 'start'} ${forward.name}`,
-            );
+            toast.error(`Failed to start ${forward.name}`);
         } finally {
             setLoadingForwards((prev) => {
                 const next = new Set(prev);
@@ -141,17 +148,79 @@ function PortForwardingPage() {
         }
     };
 
-    const handleStartAll = async (hostId: string) => {
+    const handleToggle = async (forward: PortForward) => {
+        if (forward.status === 'running') {
+            setLoadingForwards((prev) => new Set(prev).add(forward.id));
+            try {
+                await stopForward(forward.id);
+                toast.info(`Stopped ${forward.name}`);
+            } catch {
+                toast.error(`Failed to stop ${forward.name}`);
+            } finally {
+                setLoadingForwards((prev) => {
+                    const next = new Set(prev);
+                    next.delete(forward.id);
+                    return next;
+                });
+            }
+        } else {
+            const host = hosts.find((h) => h.id === forward.hostId);
+            if (host?.authType === 'password' && !host.password) {
+                setPromptTarget(forward);
+                setPromptPassword('');
+                return;
+            }
+            await _performStart(forward);
+        }
+    };
+
+    const _performStartAll = async (hostId: string, password?: string) => {
         const hostForwards = forwards.filter((f) => f.hostId === hostId && f.status !== 'running');
         for (const f of hostForwards) {
             try {
-                await startForward(f.id);
+                setLoadingForwards((prev) => new Set(prev).add(f.id));
+                await startForward(f.id, password);
             } catch {
                 toast.error(`Failed to start ${f.name}`);
+            } finally {
+                setLoadingForwards((prev) => {
+                    const next = new Set(prev);
+                    next.delete(f.id);
+                    return next;
+                });
             }
         }
         if (hostForwards.length > 0) {
             toast.success(`Started ${hostForwards.length} forward(s) for ${getHostName(hostId)}`);
+        }
+    };
+
+    const handleStartAll = async (hostId: string) => {
+        const host = hosts.find((h) => h.id === hostId);
+        if (host?.authType === 'password' && !host.password) {
+            const hostForwards = forwards.filter(
+                (f) => f.hostId === hostId && f.status !== 'running',
+            );
+            if (hostForwards.length > 0) {
+                setPromptTarget(hostId);
+                setPromptPassword('');
+            }
+            return;
+        }
+        await _performStartAll(hostId);
+    };
+
+    const handlePasswordPromptSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!promptPassword) return;
+
+        const target = promptTarget;
+        setPromptTarget(null);
+
+        if (typeof target === 'string') {
+            await _performStartAll(target, promptPassword);
+        } else if (target) {
+            await _performStart(target, promptPassword);
         }
     };
 
@@ -344,6 +413,49 @@ function PortForwardingPage() {
                     }
                 }}
             />
+
+            <Dialog
+                open={!!promptTarget}
+                onOpenChange={(open) => {
+                    if (!open) setPromptTarget(null);
+                }}>
+                <DialogContent>
+                    <form onSubmit={handlePasswordPromptSubmit}>
+                        <DialogHeader>
+                            <DialogTitle>Authentication Required</DialogTitle>
+                            <DialogDescription>
+                                Please enter the password for{' '}
+                                {typeof promptTarget === 'string'
+                                    ? getHostName(promptTarget)
+                                    : getHostName(promptTarget?.hostId || '')}
+                                .
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className='py-4'>
+                            <div className='space-y-2'>
+                                <Label htmlFor='password'>Password</Label>
+                                <Input
+                                    id='password'
+                                    type='password'
+                                    value={promptPassword}
+                                    onChange={(e) => setPromptPassword(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                type='button'
+                                variant='outline'
+                                onClick={() => setPromptTarget(null)}>
+                                Cancel
+                            </Button>
+                            <Button type='submit' disabled={!promptPassword}>
+                                Connect
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }
