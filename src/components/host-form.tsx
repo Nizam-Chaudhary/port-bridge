@@ -40,9 +40,11 @@ interface HostFormProps {
 }
 
 export function HostForm({ host, redirectTo }: HostFormProps) {
-    const { addHost, updateHost } = useAppStore();
+    const { hosts, addHost, updateHost } = useAppStore();
     const navigate = useNavigate();
     const isEditing = !!host;
+    const noProxyJumpValue = 'None';
+    const proxyJumpOptions = hosts.filter((h) => h.id !== host?.id).map((h) => h.name);
 
     const form = useForm({
         defaultValues: {
@@ -424,17 +426,56 @@ export function HostForm({ host, redirectTo }: HostFormProps) {
                                                 <FieldLabel htmlFor={field.name}>
                                                     Proxy Jump (Bastion)
                                                 </FieldLabel>
-                                                <Input
-                                                    id={field.name}
-                                                    value={field.state.value}
-                                                    onChange={(e) =>
-                                                        field.handleChange(e.target.value)
+                                                <Select
+                                                    value={
+                                                        field.state.value &&
+                                                        proxyJumpOptions.includes(field.state.value)
+                                                            ? field.state.value
+                                                            : field.state.value
+                                                              ? field.state.value
+                                                              : noProxyJumpValue
                                                     }
-                                                    placeholder='bastion-host'
-                                                />
+                                                    onValueChange={(value) => {
+                                                        if (!value) {
+                                                            field.handleChange('');
+                                                            return;
+                                                        }
+                                                        if (value === noProxyJumpValue) {
+                                                            field.handleChange('');
+                                                            return;
+                                                        }
+                                                        field.handleChange(value);
+                                                    }}>
+                                                    <SelectTrigger
+                                                        id={field.name}
+                                                        className='w-full'>
+                                                        <SelectValue placeholder='Select jump host' />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value={noProxyJumpValue}>
+                                                            None
+                                                        </SelectItem>
+                                                        {proxyJumpOptions.map((hostName) => (
+                                                            <SelectItem
+                                                                key={hostName}
+                                                                value={hostName}>
+                                                                {hostName}
+                                                            </SelectItem>
+                                                        ))}
+                                                        {field.state.value &&
+                                                            !proxyJumpOptions.includes(
+                                                                field.state.value,
+                                                            ) && (
+                                                                <SelectItem
+                                                                    value={field.state.value}>
+                                                                    {field.state.value} (no longer
+                                                                    exists)
+                                                                </SelectItem>
+                                                            )}
+                                                    </SelectContent>
+                                                </Select>
                                                 <FieldDescription>
-                                                    Pass another host's connection alias to jump
-                                                    through it.
+                                                    Select an existing host alias to jump through.
                                                 </FieldDescription>
                                             </Field>
                                         )}
