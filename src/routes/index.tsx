@@ -1,8 +1,12 @@
-import type { FormEvent } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import {
+    ChevronDownIcon,
+    ChevronRightIcon,
     CopyIcon,
+    EyeIcon,
+    EyeOffIcon,
     MoreHorizontalIcon,
     PencilIcon,
     PinIcon,
@@ -42,16 +46,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAppStore } from '@/lib/store';
+import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute('/')({
     component: HostsPage,
 });
 
 function HostsPage() {
-    const { hosts, deleteHost, duplicateHost, connectHost, toggleHostPin, updateHost } =
-        useAppStore();
+    const {
+        hosts,
+        deleteHost,
+        duplicateHost,
+        connectHost,
+        toggleHostPin,
+        toggleHostHidden,
+        updateHost,
+    } = useAppStore();
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
+    const [showHiddenHosts, setShowHiddenHosts] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<Host | null>(null);
     const [promptTarget, setPromptTarget] = useState<Host | null>(null);
     const [promptProxyHost, setPromptProxyHost] = useState<Host | null>(null);
@@ -60,19 +73,51 @@ function HostsPage() {
     const [promptSaveTargetPassword, setPromptSaveTargetPassword] = useState(false);
     const [promptSaveProxyPassword, setPromptSaveProxyPassword] = useState(false);
 
-    const filteredHosts = useMemo(() => {
-        if (!search) return hosts;
-        const q = search.toLowerCase();
-        return hosts.filter(
-            (h) =>
-                h.name.toLowerCase().includes(q) ||
-                h.hostname.toLowerCase().includes(q) ||
-                h.username.toLowerCase().includes(q),
+    const visibleHosts = useMemo(() => hosts.filter((host) => !host.hidden), [hosts]);
+    const hiddenHosts = useMemo(() => hosts.filter((host) => host.hidden), [hosts]);
+    const filteredVisibleHosts = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        if (!q) return visibleHosts;
+        return visibleHosts.filter(
+            (host) =>
+                host.name.toLowerCase().includes(q) ||
+                host.hostname.toLowerCase().includes(q) ||
+                host.username.toLowerCase().includes(q),
         );
-    }, [hosts, search]);
-
-    const pinnedHosts = useMemo(() => filteredHosts.filter((h) => h.pinned), [filteredHosts]);
-    const unpinnedHosts = useMemo(() => filteredHosts.filter((h) => !h.pinned), [filteredHosts]);
+    }, [visibleHosts, search]);
+    const filteredHiddenHosts = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        if (!q) return hiddenHosts;
+        return hiddenHosts.filter(
+            (host) =>
+                host.name.toLowerCase().includes(q) ||
+                host.hostname.toLowerCase().includes(q) ||
+                host.username.toLowerCase().includes(q),
+        );
+    }, [hiddenHosts, search]);
+    const pinnedHosts = useMemo(
+        () => filteredVisibleHosts.filter((host) => host.pinned),
+        [filteredVisibleHosts],
+    );
+    const unpinnedHosts = useMemo(
+        () => filteredVisibleHosts.filter((host) => !host.pinned),
+        [filteredVisibleHosts],
+    );
+    const hasHiddenMatches = filteredHiddenHosts.length > 0;
+    const emptyStateTitle = search
+        ? hasHiddenMatches
+            ? 'No visible hosts found'
+            : 'No hosts found'
+        : hiddenHosts.length > 0
+          ? 'All hosts are hidden'
+          : 'No hosts configured';
+    const emptyStateDescription = search
+        ? hasHiddenMatches
+            ? 'Matching hidden hosts are available below.'
+            : 'Try adjusting your search query.'
+        : hiddenHosts.length > 0
+          ? 'Use the hidden hosts section below to unhide them.'
+          : 'Add a new host to get started.';
 
     const handleEdit = (host: Host) => {
         void navigate({ to: '/hosts/edit/$hostId', params: { hostId: host.id } });
@@ -152,6 +197,24 @@ function HostsPage() {
         toast.success(`Connecting to ${target.name}...`);
     };
 
+    const renderHostCard = (host: Host) => (
+        <HostCard
+            key={host.id}
+            host={host}
+            onConnect={() => openPasswordPrompt(host)}
+            onTogglePin={() => toggleHostPin(host.id)}
+            onToggleHidden={() => toggleHostHidden(host.id)}
+            onEdit={() => handleEdit(host)}
+            onDuplicate={() => duplicateHost(host.id)}
+            onCopySshCommand={() => handleCopySshCommand(host)}
+            onDelete={() => setDeleteTarget(host)}
+        />
+    );
+
+    const hiddenHostsSubtitle = `${filteredHiddenHosts.length} hidden host${
+        filteredHiddenHosts.length === 1 ? '' : 's'
+    }${search ? ' match the current search.' : '.'}`;
+
     return (
         <>
             <PageHeader title='Hosts'>
@@ -176,69 +239,34 @@ function HostsPage() {
                 </div>
 
                 {/* Cards */}
-                {filteredHosts.length > 0 ? (
+                {filteredVisibleHosts.length > 0 ? (
                     <div className='flex flex-col gap-6'>
-                        {/* Pinned Hosts */}
                         {pinnedHosts.length > 0 && (
-                            <div className='space-y-3'>
-                                <h3 className='flex items-center gap-2 text-sm font-semibold'>
-                                    <PinIcon className='size-4' />
-                                    Pinned Hosts
-                                </h3>
-                                <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-                                    {pinnedHosts.map((host) => (
-                                        <HostCard
-                                            key={host.id}
-                                            host={host}
-                                            onConnect={() => openPasswordPrompt(host)}
-                                            onTogglePin={() => toggleHostPin(host.id)}
-                                            onEdit={() => handleEdit(host)}
-                                            onDuplicate={() => duplicateHost(host.id)}
-                                            onCopySshCommand={() => handleCopySshCommand(host)}
-                                            onDelete={() => setDeleteTarget(host)}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
+                            <HostSection
+                                title='Pinned Hosts'
+                                icon={<PinIcon className='size-4' />}
+                                hosts={pinnedHosts}
+                                renderHostCard={renderHostCard}
+                            />
                         )}
 
-                        {/* Unpinned Hosts */}
                         {unpinnedHosts.length > 0 && (
-                            <div className='space-y-3'>
-                                {pinnedHosts.length > 0 && (
-                                    <h3 className='text-sm font-semibold text-muted-foreground'>
-                                        Other Hosts
-                                    </h3>
-                                )}
-                                <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-                                    {unpinnedHosts.map((host) => (
-                                        <HostCard
-                                            key={host.id}
-                                            host={host}
-                                            onConnect={() => openPasswordPrompt(host)}
-                                            onTogglePin={() => toggleHostPin(host.id)}
-                                            onEdit={() => handleEdit(host)}
-                                            onDuplicate={() => duplicateHost(host.id)}
-                                            onCopySshCommand={() => handleCopySshCommand(host)}
-                                            onDelete={() => setDeleteTarget(host)}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
+                            <HostSection
+                                title='Other Hosts'
+                                hosts={unpinnedHosts}
+                                titleClassName={
+                                    pinnedHosts.length > 0 ? 'text-muted-foreground' : ''
+                                }
+                                renderHostCard={renderHostCard}
+                            />
                         )}
                     </div>
                 ) : (
                     <div className='flex flex-1 flex-col items-center justify-center gap-3 rounded-lg border border-dashed py-12'>
                         <TerminalIcon className='size-8 text-muted-foreground' />
                         <div className='text-center'>
-                            <p className='font-medium'>
-                                {search ? 'No hosts found' : 'No hosts configured'}
-                            </p>
-                            <p className='text-sm text-muted-foreground'>
-                                {search
-                                    ? 'Try adjusting your search query.'
-                                    : 'Add a new host to get started.'}
-                            </p>
+                            <p className='font-medium'>{emptyStateTitle}</p>
+                            <p className='text-sm text-muted-foreground'>{emptyStateDescription}</p>
                         </div>
                         {!search && (
                             <Button size='sm' onClick={handleAdd}>
@@ -247,6 +275,20 @@ function HostsPage() {
                             </Button>
                         )}
                     </div>
+                )}
+
+                {hiddenHosts.length > 0 && (
+                    <HostSection
+                        title='Hidden Hosts'
+                        icon={<EyeOffIcon className='size-4' />}
+                        hosts={filteredHiddenHosts}
+                        subtitle={hiddenHostsSubtitle}
+                        collapsible
+                        expanded={showHiddenHosts}
+                        onToggle={() => setShowHiddenHosts((current) => !current)}
+                        emptyState='No hidden hosts match the current search.'
+                        renderHostCard={renderHostCard}
+                    />
                 )}
             </div>
 
@@ -375,10 +417,78 @@ function HostsPage() {
     );
 }
 
+function HostSection({
+    title,
+    icon,
+    hosts,
+    subtitle,
+    titleClassName,
+    collapsible = false,
+    expanded = true,
+    onToggle,
+    emptyState,
+    renderHostCard,
+}: {
+    title: string;
+    icon?: ReactNode;
+    hosts: Host[];
+    subtitle?: string;
+    titleClassName?: string;
+    collapsible?: boolean;
+    expanded?: boolean;
+    onToggle?: () => void;
+    emptyState?: string;
+    renderHostCard: (host: Host) => ReactNode;
+}) {
+    const showContent = !collapsible || expanded;
+
+    return (
+        <div className='space-y-3'>
+            <div className='flex items-start justify-between gap-3'>
+                <div className='space-y-1'>
+                    <h3
+                        className={cn(
+                            'flex items-center gap-2 text-sm font-semibold',
+                            titleClassName,
+                        )}>
+                        {icon}
+                        {title}
+                    </h3>
+                    {subtitle && <p className='text-sm text-muted-foreground'>{subtitle}</p>}
+                </div>
+                {collapsible && onToggle && (
+                    <Button variant='ghost' size='sm' onClick={onToggle}>
+                        {expanded ? (
+                            <ChevronDownIcon className='size-4' />
+                        ) : (
+                            <ChevronRightIcon className='size-4' />
+                        )}
+                        {expanded ? 'Hide' : 'Show'}
+                    </Button>
+                )}
+            </div>
+
+            {showContent &&
+                (hosts.length > 0 ? (
+                    <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+                        {hosts.map((host) => renderHostCard(host))}
+                    </div>
+                ) : (
+                    emptyState && (
+                        <div className='rounded-lg border border-dashed px-4 py-6 text-sm text-muted-foreground'>
+                            {emptyState}
+                        </div>
+                    )
+                ))}
+        </div>
+    );
+}
+
 function HostCard({
     host,
     onConnect,
     onTogglePin,
+    onToggleHidden,
     onEdit,
     onDuplicate,
     onCopySshCommand,
@@ -387,6 +497,7 @@ function HostCard({
     host: Host;
     onConnect: () => void;
     onTogglePin: () => void;
+    onToggleHidden: () => void;
     onEdit: () => void;
     onDuplicate: () => void;
     onCopySshCommand: () => void;
@@ -452,6 +563,10 @@ function HostCard({
                             <DropdownMenuItem onClick={onTogglePin}>
                                 {host.pinned ? <PinOffIcon /> : <PinIcon />}
                                 {host.pinned ? 'Unpin' : 'Pin'}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={onToggleHidden}>
+                                {host.hidden ? <EyeIcon /> : <EyeOffIcon />}
+                                {host.hidden ? 'Unhide' : 'Hide'}
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={onEdit}>
                                 <PencilIcon />

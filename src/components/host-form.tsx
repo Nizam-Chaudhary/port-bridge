@@ -44,7 +44,10 @@ export function HostForm({ host, redirectTo }: HostFormProps) {
     const navigate = useNavigate();
     const isEditing = !!host;
     const noProxyJumpValue = 'None';
-    const proxyJumpOptions = hosts.filter((h) => h.id !== host?.id).map((h) => h.name);
+    const proxyJumpOptions = hosts
+        .filter((candidate) => candidate.id !== host?.id)
+        .filter((candidate) => !candidate.hidden || candidate.name === host?.proxyJump)
+        .map((candidate) => candidate.name);
 
     const form = useForm({
         defaultValues: {
@@ -94,7 +97,7 @@ export function HostForm({ host, redirectTo }: HostFormProps) {
         },
 
         onSubmit: async ({ value }) => {
-            const castValue = value as unknown as Omit<Host, 'id' | 'status'>;
+            const castValue = value as unknown as Omit<Host, 'id' | 'status' | 'hidden'>;
             if (isEditing && host) {
                 // we treat forwards as part of the host object when updating the store
                 // the store might extract it globally if needed, or we just save it as part of host

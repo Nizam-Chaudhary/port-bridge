@@ -7,13 +7,19 @@ import {
     ChevronDownIcon,
     ChevronsUpDownIcon,
     CopyIcon,
+    FileTextIcon,
+    GlobeIcon,
+    HashIcon,
     Loader2Icon,
+    NetworkIcon,
     PlusIcon,
+    ServerIcon,
     SparklesIcon,
+    TagIcon,
     TerminalIcon,
     XCircleIcon,
 } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
 import type { ForwardType, PortForward } from '@/lib/types';
@@ -39,7 +45,7 @@ import {
     CommandList,
 } from '@/components/ui/command';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
     Select,
@@ -75,6 +81,7 @@ export function ForwardForm({ forward }: ForwardFormProps) {
     } | null>(null);
     const [isCheckingPort, setIsCheckingPort] = useState(false);
     const [hostOpen, setHostOpen] = useState(false);
+    const selectableHosts = useMemo(() => hosts.filter((host) => !host.hidden), [hosts]);
 
     const form = useForm({
         defaultValues: {
@@ -299,16 +306,23 @@ export function ForwardForm({ forward }: ForwardFormProps) {
                                     return (
                                         <Field data-invalid={isInvalid}>
                                             <FieldLabel htmlFor={field.name}>Name</FieldLabel>
-                                            <Input
-                                                id={field.name}
-                                                name={field.name}
-                                                value={field.state.value}
-                                                onBlur={field.handleBlur}
-                                                onChange={(e) => field.handleChange(e.target.value)}
-                                                aria-invalid={isInvalid}
-                                                placeholder='postgres-prod'
-                                                autoComplete='off'
-                                            />
+                                            <InputGroup>
+                                                <InputGroupAddon>
+                                                    <TagIcon className='size-4 text-muted-foreground' />
+                                                </InputGroupAddon>
+                                                <InputGroupInput
+                                                    id={field.name}
+                                                    name={field.name}
+                                                    value={field.state.value}
+                                                    onBlur={field.handleBlur}
+                                                    onChange={(e) =>
+                                                        field.handleChange(e.target.value)
+                                                    }
+                                                    aria-invalid={isInvalid}
+                                                    placeholder='postgres-prod'
+                                                    autoComplete='off'
+                                                />
+                                            </InputGroup>
                                             {isInvalid && (
                                                 <FieldError errors={field.state.meta.errors} />
                                             )}
@@ -321,15 +335,20 @@ export function ForwardForm({ forward }: ForwardFormProps) {
                                 children={(field) => (
                                     <Field>
                                         <FieldLabel htmlFor={field.name}>Description</FieldLabel>
-                                        <Input
-                                            id={field.name}
-                                            name={field.name}
-                                            value={field.state.value}
-                                            onBlur={field.handleBlur}
-                                            onChange={(e) => field.handleChange(e.target.value)}
-                                            placeholder='Production PostgreSQL tunnel'
-                                            autoComplete='off'
-                                        />
+                                        <InputGroup>
+                                            <InputGroupAddon>
+                                                <FileTextIcon className='size-4 text-muted-foreground' />
+                                            </InputGroupAddon>
+                                            <InputGroupInput
+                                                id={field.name}
+                                                name={field.name}
+                                                value={field.state.value}
+                                                onBlur={field.handleBlur}
+                                                onChange={(e) => field.handleChange(e.target.value)}
+                                                placeholder='Production PostgreSQL tunnel'
+                                                autoComplete='off'
+                                            />
+                                        </InputGroup>
                                         <FieldDescription>Optional description.</FieldDescription>
                                     </Field>
                                 )}
@@ -351,13 +370,18 @@ export function ForwardForm({ forward }: ForwardFormProps) {
                                                         <Button
                                                             variant='outline'
                                                             id='forward-host'
-                                                            className='w-full justify-between font-normal'
+                                                            className='w-full justify-between gap-2 font-normal'
                                                             aria-invalid={isInvalid}
                                                         />
                                                     }>
-                                                    {selectedHost
-                                                        ? `${selectedHost.name} (${selectedHost.hostname})`
-                                                        : 'Select host...'}
+                                                    <span className='flex min-w-0 items-center gap-2'>
+                                                        <ServerIcon className='size-4 text-muted-foreground' />
+                                                        <span className='truncate'>
+                                                            {selectedHost
+                                                                ? `${selectedHost.name} (${selectedHost.hostname})`
+                                                                : 'Select host...'}
+                                                        </span>
+                                                    </span>
                                                     <ChevronsUpDownIcon className='ml-auto size-4 shrink-0 opacity-50' />
                                                 </PopoverTrigger>
                                                 <PopoverContent
@@ -390,7 +414,7 @@ export function ForwardForm({ forward }: ForwardFormProps) {
                                                                 </div>
                                                             </CommandEmpty>
                                                             <CommandGroup>
-                                                                {hosts.map((host) => (
+                                                                {selectableHosts.map((host) => (
                                                                     <CommandItem
                                                                         key={host.id}
                                                                         value={`${host.name} ${host.hostname}`}
@@ -462,7 +486,8 @@ export function ForwardForm({ forward }: ForwardFormProps) {
                                                     setPortCheckResult(null);
                                                 }
                                             }}>
-                                            <SelectTrigger id='forward-type'>
+                                            <SelectTrigger id='forward-type' className='gap-2'>
+                                                <NetworkIcon className='size-4 text-muted-foreground' />
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -504,22 +529,26 @@ export function ForwardForm({ forward }: ForwardFormProps) {
                                                     Local Port
                                                 </FieldLabel>
                                                 <div className='flex items-center gap-2'>
-                                                    <Input
-                                                        id='forward-localPort'
-                                                        name={field.name}
-                                                        type='number'
-                                                        className='flex-1'
-                                                        value={field.state.value || ''}
-                                                        onBlur={field.handleBlur}
-                                                        onChange={(e) => {
-                                                            field.handleChange(
-                                                                Number(e.target.value),
-                                                            );
-                                                            setPortCheckResult(null);
-                                                        }}
-                                                        aria-invalid={isInvalid}
-                                                        placeholder='5432'
-                                                    />
+                                                    <InputGroup className='flex-1'>
+                                                        <InputGroupAddon>
+                                                            <HashIcon className='size-4 text-muted-foreground' />
+                                                        </InputGroupAddon>
+                                                        <InputGroupInput
+                                                            id='forward-localPort'
+                                                            name={field.name}
+                                                            type='number'
+                                                            value={field.state.value || ''}
+                                                            onBlur={field.handleBlur}
+                                                            onChange={(e) => {
+                                                                field.handleChange(
+                                                                    Number(e.target.value),
+                                                                );
+                                                                setPortCheckResult(null);
+                                                            }}
+                                                            aria-invalid={isInvalid}
+                                                            placeholder='5432'
+                                                        />
+                                                    </InputGroup>
                                                     <Button
                                                         type='button'
                                                         variant='outline'
@@ -592,16 +621,21 @@ export function ForwardForm({ forward }: ForwardFormProps) {
                                                 <FieldLabel htmlFor='forward-remoteHost'>
                                                     Remote Host
                                                 </FieldLabel>
-                                                <Input
-                                                    id='forward-remoteHost'
-                                                    name={field.name}
-                                                    value={field.state.value}
-                                                    onBlur={field.handleBlur}
-                                                    onChange={(e) =>
-                                                        field.handleChange(e.target.value)
-                                                    }
-                                                    placeholder='localhost'
-                                                />
+                                                <InputGroup>
+                                                    <InputGroupAddon>
+                                                        <GlobeIcon className='size-4 text-muted-foreground' />
+                                                    </InputGroupAddon>
+                                                    <InputGroupInput
+                                                        id='forward-remoteHost'
+                                                        name={field.name}
+                                                        value={field.state.value}
+                                                        onBlur={field.handleBlur}
+                                                        onChange={(e) =>
+                                                            field.handleChange(e.target.value)
+                                                        }
+                                                        placeholder='localhost'
+                                                    />
+                                                </InputGroup>
                                             </Field>
                                         )}
                                     />
@@ -616,20 +650,25 @@ export function ForwardForm({ forward }: ForwardFormProps) {
                                                     <FieldLabel htmlFor='forward-remotePort'>
                                                         Remote Port
                                                     </FieldLabel>
-                                                    <Input
-                                                        id='forward-remotePort'
-                                                        name={field.name}
-                                                        type='number'
-                                                        value={field.state.value || ''}
-                                                        onBlur={field.handleBlur}
-                                                        onChange={(e) =>
-                                                            field.handleChange(
-                                                                Number(e.target.value),
-                                                            )
-                                                        }
-                                                        aria-invalid={isInvalid}
-                                                        placeholder='5432'
-                                                    />
+                                                    <InputGroup>
+                                                        <InputGroupAddon>
+                                                            <HashIcon className='size-4 text-muted-foreground' />
+                                                        </InputGroupAddon>
+                                                        <InputGroupInput
+                                                            id='forward-remotePort'
+                                                            name={field.name}
+                                                            type='number'
+                                                            value={field.state.value || ''}
+                                                            onBlur={field.handleBlur}
+                                                            onChange={(e) =>
+                                                                field.handleChange(
+                                                                    Number(e.target.value),
+                                                                )
+                                                            }
+                                                            aria-invalid={isInvalid}
+                                                            placeholder='5432'
+                                                        />
+                                                    </InputGroup>
                                                     {isInvalid && (
                                                         <FieldError
                                                             errors={field.state.meta.errors}
@@ -654,20 +693,25 @@ export function ForwardForm({ forward }: ForwardFormProps) {
                                                     <FieldLabel htmlFor='forward-remotePort-r'>
                                                         Remote Port
                                                     </FieldLabel>
-                                                    <Input
-                                                        id='forward-remotePort-r'
-                                                        name={field.name}
-                                                        type='number'
-                                                        value={field.state.value || ''}
-                                                        onBlur={field.handleBlur}
-                                                        onChange={(e) =>
-                                                            field.handleChange(
-                                                                Number(e.target.value),
-                                                            )
-                                                        }
-                                                        aria-invalid={isInvalid}
-                                                        placeholder='8080'
-                                                    />
+                                                    <InputGroup>
+                                                        <InputGroupAddon>
+                                                            <HashIcon className='size-4 text-muted-foreground' />
+                                                        </InputGroupAddon>
+                                                        <InputGroupInput
+                                                            id='forward-remotePort-r'
+                                                            name={field.name}
+                                                            type='number'
+                                                            value={field.state.value || ''}
+                                                            onBlur={field.handleBlur}
+                                                            onChange={(e) =>
+                                                                field.handleChange(
+                                                                    Number(e.target.value),
+                                                                )
+                                                            }
+                                                            aria-invalid={isInvalid}
+                                                            placeholder='8080'
+                                                        />
+                                                    </InputGroup>
                                                     {isInvalid && (
                                                         <FieldError
                                                             errors={field.state.meta.errors}
@@ -684,16 +728,21 @@ export function ForwardForm({ forward }: ForwardFormProps) {
                                                 <FieldLabel htmlFor='forward-localHost'>
                                                     Local Host
                                                 </FieldLabel>
-                                                <Input
-                                                    id='forward-localHost'
-                                                    name={field.name}
-                                                    value={field.state.value}
-                                                    onBlur={field.handleBlur}
-                                                    onChange={(e) =>
-                                                        field.handleChange(e.target.value)
-                                                    }
-                                                    placeholder='localhost'
-                                                />
+                                                <InputGroup>
+                                                    <InputGroupAddon>
+                                                        <GlobeIcon className='size-4 text-muted-foreground' />
+                                                    </InputGroupAddon>
+                                                    <InputGroupInput
+                                                        id='forward-localHost'
+                                                        name={field.name}
+                                                        value={field.state.value}
+                                                        onBlur={field.handleBlur}
+                                                        onChange={(e) =>
+                                                            field.handleChange(e.target.value)
+                                                        }
+                                                        placeholder='localhost'
+                                                    />
+                                                </InputGroup>
                                             </Field>
                                         )}
                                     />
@@ -708,20 +757,25 @@ export function ForwardForm({ forward }: ForwardFormProps) {
                                                     <FieldLabel htmlFor='forward-localPort-remote'>
                                                         Local Port
                                                     </FieldLabel>
-                                                    <Input
-                                                        id='forward-localPort-remote'
-                                                        name={field.name}
-                                                        type='number'
-                                                        value={field.state.value || ''}
-                                                        onBlur={field.handleBlur}
-                                                        onChange={(e) =>
-                                                            field.handleChange(
-                                                                Number(e.target.value),
-                                                            )
-                                                        }
-                                                        aria-invalid={isInvalid}
-                                                        placeholder='3000'
-                                                    />
+                                                    <InputGroup>
+                                                        <InputGroupAddon>
+                                                            <HashIcon className='size-4 text-muted-foreground' />
+                                                        </InputGroupAddon>
+                                                        <InputGroupInput
+                                                            id='forward-localPort-remote'
+                                                            name={field.name}
+                                                            type='number'
+                                                            value={field.state.value || ''}
+                                                            onBlur={field.handleBlur}
+                                                            onChange={(e) =>
+                                                                field.handleChange(
+                                                                    Number(e.target.value),
+                                                                )
+                                                            }
+                                                            aria-invalid={isInvalid}
+                                                            placeholder='3000'
+                                                        />
+                                                    </InputGroup>
                                                     {isInvalid && (
                                                         <FieldError
                                                             errors={field.state.meta.errors}
@@ -770,16 +824,21 @@ export function ForwardForm({ forward }: ForwardFormProps) {
                                                 <FieldLabel htmlFor='forward-bindAddress'>
                                                     Bind Address
                                                 </FieldLabel>
-                                                <Input
-                                                    id='forward-bindAddress'
-                                                    name={field.name}
-                                                    value={field.state.value}
-                                                    onBlur={field.handleBlur}
-                                                    onChange={(e) =>
-                                                        field.handleChange(e.target.value)
-                                                    }
-                                                    placeholder='0.0.0.0'
-                                                />
+                                                <InputGroup>
+                                                    <InputGroupAddon>
+                                                        <GlobeIcon className='size-4 text-muted-foreground' />
+                                                    </InputGroupAddon>
+                                                    <InputGroupInput
+                                                        id='forward-bindAddress'
+                                                        name={field.name}
+                                                        value={field.state.value}
+                                                        onBlur={field.handleBlur}
+                                                        onChange={(e) =>
+                                                            field.handleChange(e.target.value)
+                                                        }
+                                                        placeholder='0.0.0.0'
+                                                    />
+                                                </InputGroup>
                                                 <FieldDescription>
                                                     Leave empty for localhost only. Set to 0.0.0.0
                                                     to allow external connections.

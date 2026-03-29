@@ -5,7 +5,7 @@ import type { Host, PortForward } from './types';
 import { useAppStore } from './store';
 
 // Mock test data generator
-const createTestHost = (overrides?: Partial<Host>): Omit<Host, 'id' | 'status'> =>
+const createTestHost = (overrides?: Partial<Host>): Omit<Host, 'id' | 'status' | 'hidden'> =>
     ({
         name: 'Test Host',
         hostname: 'example.com',
@@ -80,6 +80,7 @@ describe('useAppStore', () => {
             expect(state.hosts).toHaveLength(1);
             expect(state.hosts[0].name).toBe('Test Host');
             expect(state.hosts[0].status).toBe('disconnected');
+            expect(state.hosts[0].hidden).toBe(false);
             expect(state.hosts[0].id).toBeDefined();
         });
 
@@ -116,12 +117,41 @@ describe('useAppStore', () => {
             store.addHost(createTestHost({ name: 'Original Host' }));
 
             const hostId = useAppStore.getState().hosts[0].id;
+            useAppStore.getState().toggleHostHidden(hostId);
             store.duplicateHost(hostId);
 
             const state = useAppStore.getState();
             expect(state.hosts).toHaveLength(2);
             expect(state.hosts[1].name).toBe('Original Host-copy');
             expect(state.hosts[1].id).not.toBe(hostId);
+            expect(state.hosts[1].hidden).toBe(false);
+        });
+
+        it('should toggle host hidden state', () => {
+            const store = useAppStore.getState();
+            store.addHost(createTestHost());
+
+            const hostId = useAppStore.getState().hosts[0].id;
+            useAppStore.getState().toggleHostHidden(hostId);
+            expect(useAppStore.getState().hosts[0].hidden).toBe(true);
+
+            useAppStore.getState().toggleHostHidden(hostId);
+            expect(useAppStore.getState().hosts[0].hidden).toBe(false);
+        });
+
+        it('should normalize legacy hosts without hidden state', () => {
+            const legacyHost = {
+                ...createTestHost(),
+                id: 'legacy-host',
+                status: 'disconnected' as const,
+                forwards: [],
+            };
+
+            useAppStore.getState()._setInitialData({
+                hosts: [legacyHost as unknown as Host],
+            });
+
+            expect(useAppStore.getState().hosts[0].hidden).toBe(false);
         });
     });
 

@@ -14,11 +14,12 @@ interface AppState {
 }
 
 interface AppActions {
-    addHost: (host: Omit<Host, 'id' | 'status'>) => void;
+    addHost: (host: Omit<Host, 'id' | 'status' | 'hidden'>) => void;
     updateHost: (id: string, host: Partial<Host>) => void;
     deleteHost: (id: string) => void;
     duplicateHost: (id: string) => void;
     toggleHostPin: (id: string) => void;
+    toggleHostHidden: (id: string) => void;
 
     addForward: (forward: Omit<PortForward, 'id' | 'status'>) => void;
     updateForward: (id: string, forward: Partial<PortForward>) => void;
@@ -67,6 +68,7 @@ export const useAppStore = create<AppStore>()(
                             ...host,
                             id: crypto.randomUUID(),
                             status: 'disconnected',
+                            hidden: false,
                         } as Host);
                     });
                 },
@@ -96,6 +98,7 @@ export const useAppStore = create<AppStore>()(
                                 id: crypto.randomUUID(),
                                 name: `${host.name}-copy`,
                                 status: 'disconnected' as const,
+                                hidden: false,
                             });
                         }
                     });
@@ -106,6 +109,15 @@ export const useAppStore = create<AppStore>()(
                         const host = state.hosts.find((h) => h.id === id);
                         if (host) {
                             host.pinned = !host.pinned;
+                        }
+                    });
+                },
+
+                toggleHostHidden: (id) => {
+                    set((state) => {
+                        const host = state.hosts.find((h) => h.id === id);
+                        if (host) {
+                            host.hidden = !host.hidden;
                         }
                     });
                 },
@@ -292,7 +304,10 @@ export const useAppStore = create<AppStore>()(
                 _setInitialData: (data) => {
                     set((state) => {
                         if (data.hosts) {
-                            state.hosts = data.hosts;
+                            state.hosts = data.hosts.map((host) => ({
+                                ...host,
+                                hidden: host.hidden ?? false,
+                            }));
                             state.forwards = data.hosts.flatMap((h: Host) => h.forwards || []);
                         }
                         if (data.settings) {

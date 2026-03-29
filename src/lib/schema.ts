@@ -66,6 +66,7 @@ export const HostSchema = z.object({
 
     status: z.enum(['connected', 'disconnected', 'error']).default('disconnected'),
     pinned: z.boolean().default(false),
+    hidden: z.boolean().default(false),
 });
 
 // Terminal Emulator
