@@ -206,7 +206,7 @@
     }
 
     button:not(:disabled),
-    [role='button']:not([aria-disabled='true']),
+    [role='button']:not(:disabled),
     a[href],
     select:not(:disabled),
     [tabindex]:not([tabindex='-1']):not(:disabled),
