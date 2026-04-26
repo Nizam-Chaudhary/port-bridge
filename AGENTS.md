@@ -1,21 +1,31 @@
 # AGENTS.md
 
-This is Electron GUI app to manage port forwarding and ssh remote hosts
+## Plan Mode
 
-## Plan Mode instructions
+Make the plan extremely concise. Sacrifice grammar for the sake of concision.
 
-- When writing plans, be extremely concise. Sacrifice grammar for the sake of concision.
+## Task Completion Requirements
 
-## Common instructions
+- All of `bun run format`, `bun run lint:type:fix` must pass before considering tasks completed.
 
-- use `bun` as package manager
-- use `bun format` always to format
-- use `bun lint:type:fix` always to fix linting errors
-- use `bunx --bun shadcn@latest <component-name>` to add shadcn ui components
+## Project Snapshot
 
-## Shadcn instructions
+SSH Manager is a minimal GUI for Planning and Managing SSH hosts and port forwarding.
 
-- use `bunx --bun shadcn@latest add <component-name>` to add shadcn ui components
-- uses `base ui` components for the base
-- check documentation for components at `https://ui.shadcn.com/docs/components/base/<component-name>`
-- check documentation for forms at `https://ui.shadcn.com/docs/forms/tanstack-form`
+## Core Priorities
+
+1. Performance first.
+2. Reliability first.
+3. Keep behavior predictable under load and during failures.
+
+If a tradeoff is required, choose correctness and robustness over short-term convenience.
+
+## Maintainability
+
+Long term maintainability is a core priority. Duplicate logic across multiple files is a code smell and should be avoided. Don't be afraid to change existing code. Don't take shortcuts by just adding local logic to solve a problem.
+
+## Repository Structure
+
+- uses type based folders like `components`, `lib`, `routes`, etc...
+- keep related code together and inside same file if it belongs there.
+- Keep nesting shallow. Avoid creating extra nesting with directories unless they remove real duplication.
