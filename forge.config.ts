@@ -43,6 +43,7 @@ const config: ForgeConfig = {
         new MakerDeb({
             options: {
                 productName: 'SSH Manager',
+                maintainer: 'Nizam Chaudhary <ChaudharyNizam10@gmail.com>',
                 icon: path.join(iconsDir, 'ssh-manager.svg'),
                 depends: ['sshpass'],
             },
