@@ -26,8 +26,11 @@
         "postinstall": "node scripts/fix-electron-sandbox.js"
     },
     "dependencies": {
-        "@base-ui/react": "^1.2.0",
+        "@base-ui/react": "^1.4.1",
         "@fontsource-variable/geist": "^5.2.8",
+        "@fontsource-variable/inter": "^5.2.8",
+        "@hugeicons/core-free-icons": "^4.1.1",
+        "@hugeicons/react": "^1.1.6",
         "@tailwindcss/vite": "^4.2.1",
         "@tanstack/react-form": "^1.28.4",
         "@tanstack/react-router": "^1.163.3",
@@ -40,8 +43,8 @@
         "next-themes": "^0.4.6",
         "react": "^19.2.4",
         "react-dom": "^19.2.4",
-        "react-resizable-panels": "^4.7.1",
-        "shadcn": "^3.8.5",
+        "react-resizable-panels": "^4.10.0",
+        "shadcn": "^4.5.0",
         "sonner": "^2.0.7",
         "ssh-config": "^5.1.0",
         "tailwind-merge": "^3.5.0",

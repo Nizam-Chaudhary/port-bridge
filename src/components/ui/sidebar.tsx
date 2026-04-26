@@ -1,7 +1,10 @@
+'use client';
+
 import { mergeProps } from '@base-ui/react/merge-props';
 import { useRender } from '@base-ui/react/use-render';
+import { SidebarLeftIcon } from '@hugeicons/core-free-icons';
+import { HugeiconsIcon } from '@hugeicons/react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { PanelLeftIcon } from 'lucide-react';
 import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -251,7 +254,7 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
                 toggleSidebar();
             }}
             {...props}>
-            <PanelLeftIcon />
+            <HugeiconsIcon icon={SidebarLeftIcon} strokeWidth={2} />
             <span className='sr-only'>Toggle Sidebar</span>
         </Button>
     );
@@ -345,7 +348,7 @@ function SidebarContent({ className, ...props }: React.ComponentProps<'div'>) {
             data-slot='sidebar-content'
             data-sidebar='content'
             className={cn(
-                'no-scrollbar flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden',
+                'no-scrollbar flex min-h-0 flex-1 flex-col gap-0 overflow-auto group-data-[collapsible=icon]:overflow-hidden',
                 className,
             )}
             {...props}
@@ -428,7 +431,7 @@ function SidebarMenu({ className, ...props }: React.ComponentProps<'ul'>) {
         <ul
             data-slot='sidebar-menu'
             data-sidebar='menu'
-            className={cn('flex w-full min-w-0 flex-col gap-1', className)}
+            className={cn('flex w-full min-w-0 flex-col gap-0', className)}
             {...props}
         />
     );
